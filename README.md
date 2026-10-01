@@ -11,8 +11,8 @@
 ```
 ├── apps/
 │   ├── web/        React SPA (Vite, Monaco, Yjs, PWA) — план
-│   ├── api/        Fastify REST + Swagger + auth + чат
-│   ├── collab/     Hocuspocus, синхронизация Yjs — план
+│   ├── api/        Fastify REST + Swagger + auth + проекты + файлы
+│   ├── collab/     Hocuspocus, синхронизация Yjs, права доступа
 │   └── runner/     Воркер BullMQ, запуск кода в Docker — план
 ├── packages/
 │   ├── shared/     Типы, Zod-схемы, константы
@@ -31,12 +31,12 @@
 pnpm install
 docker compose -f infra/docker-compose.dev.yml up -d   # Postgres :5433, Redis :6380
 cp apps/api/.env.example apps/api/.env
+cp apps/collab/.env.example apps/collab/.env
 cp packages/db/.env.example packages/db/.env
 pnpm db:migrate
-pnpm dev:api
+pnpm dev:api      # REST API, http://localhost:3001, Swagger на /docs
+pnpm dev:collab   # сервер синхронизации, ws://localhost:1234
 ```
-
-API поднимется на `http://localhost:3001`, Swagger UI — на `/docs`.
 
 > Порты 5433/6380 выбраны не случайно: 5432/6379 на этой машине заняты
 > локальными Postgres/Redis вне Docker. При необходимости поменяйте их в

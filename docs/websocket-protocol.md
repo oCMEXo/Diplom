@@ -1,0 +1,56 @@
+# WebSocket-протокол синхронизации
+
+Синхронизация документов (код, доска, markdown) идёт через [Hocuspocus](https://tiptap.dev/docs/hocuspocus)
+— сервер `apps/collab`, слушает `ws://<host>:1234` (см. [ADR-002](adr/002-sync-via-hocuspocus.md)).
+Протокол — бинарный y-protocols/sync поверх WebSocket, который реализует
+клиентская библиотека `@hocuspocus/provider` (или `y-websocket`-совместимая);
+руками его обычно не трогают.
+
+## Подключение
+
+Один `Y.Doc` на файл (см. [ADR-001](adr/001-one-yjs-doc-per-file.md)).
+Имя документа — это **id файла** (uuid) из таблицы `files`.
+
+```ts
+import { HocuspocusProvider } from "@hocuspocus/provider";
+
+const provider = new HocuspocusProvider({
+  url: "ws://localhost:1234",
+  name: fileId, // files.id
+  token: accessToken, // тот же JWT access-токен, что и для REST API
+});
+```
+
+Клиент передаёт `token` — access-токен, выданный `/auth/login` или
+`/auth/register`. Сервер:
+
+1. Проверяет подпись и срок жизни JWT (`JWT_ACCESS_SECRET`).
+2. Находит файл по `documentName` → берёт его `projectId`.
+3. Проверяет, что пользователь — участник проекта (`project_members`).
+4. Если роль `viewer` — помечает соединение как read-only: сервер примет
+   и разошлёт синхронизацию для чтения, но проигнорирует и не сохранит
+   правки, присланные с этого соединения (клиентский UI должен сам
+   выставлять редактору `readOnly`, сервер — лишь подстраховка).
+5. Если пользователь не участник проекта или файл не найден — соединению
+   приходит `permission-denied`, и оно не авторизуется.
+
+## Хранение
+
+Расширение `@hocuspocus/extension-database` грузит и сохраняет состояние
+документа как бинарный Yjs-снэпшот в колонке `files.yjs_state` (bytea).
+Сохранение дебаунсится (по умолчанию Hocuspocus ждёт после последней правки
+перед записью в БД), поэтому при тестах/проверках нужно подождать секунды
+полторы-две после последней правки, прежде чем читать `yjs_state` напрямую
+из Postgres.
+
+## Курсоры и присутствие (awareness)
+
+Позиции курсоров и присутствие участников идут через встроенный в Hocuspocus/Yjs
+протокол awareness — отдельного кода на сервере для этого не нужно, провайдер
+на клиенте выставляет `provider.setAwarenessField(...)`.
+
+## Чат — отдельно
+
+Чат проекта НЕ идёт через этот протокол: сообщения пишутся в PostgreSQL через
+REST (`apps/api`) и рассылаются обычным WebSocket-событием, без CRDT (см.
+[ADR-002](adr/002-sync-via-hocuspocus.md)).

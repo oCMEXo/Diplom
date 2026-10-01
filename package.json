@@ -9,6 +9,7 @@
   "scripts": {
     "build": "pnpm -r --filter=./packages/* --filter=./apps/* build",
     "dev:api": "pnpm --filter @collab/api dev",
+    "dev:collab": "pnpm --filter @collab/collab dev",
     "dev:web": "pnpm --filter @collab/web dev",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
