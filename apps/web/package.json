@@ -2,11 +2,37 @@
   "name": "@collab/web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "echo \"web app scaffolding lands in a later milestone\" && exit 0",
-    "build": "echo \"web app scaffolding lands in a later milestone\" && exit 0",
-    "typecheck": "echo \"(no sources yet)\"",
-    "lint": "echo \"(no sources yet)\"",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint src",
     "test": "echo \"(no tests yet)\""
+  },
+  "dependencies": {
+    "@collab/shared": "workspace:*",
+    "@hocuspocus/provider": "^2.0.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@tanstack/react-query": "^5.59.0",
+    "monaco-editor": "^0.52.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "y-indexeddb": "^9.0.12",
+    "y-monaco": "^0.1.6",
+    "yjs": "^13.6.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8"
   }
 }

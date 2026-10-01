@@ -1,9 +1,34 @@
 # @collab/web
 
-React SPA: Vite, Monaco Editor + y-monaco, Yjs (+ y-indexeddb for offline),
-react-konva for the design board, react-markdown for doc preview, vite-plugin-pwa
-for the offline shell.
+React SPA: Vite, Monaco Editor + y-monaco + y-indexeddb (offline cache),
+Hocuspocus provider for real-time sync, TanStack Query for REST, Tailwind.
 
-Not implemented yet — scheduled after the API/auth/DB foundation (see the
-project plan). This package currently exists so the workspace layout matches
-the architecture doc.
+## Что есть
+
+- Регистрация / вход / **вход как гость без регистрации**
+- Ссылка-приглашение в проект (`/join/:code`, как invite-ссылка в Discord) —
+  владелец генерирует, может перевыпустить и выбрать роль (`editor`/`viewer`);
+  плюс точечное приглашение по email, если нужен конкретный человек
+- Дерево файлов, создание файлов (код / документ / доска)
+- Совместный Monaco-редактор поверх Yjs: правки синхронизируются в реальном
+  времени между всеми открывшими файл, с учётом роли (`viewer` → read-only
+  на сервере)
+
+## Чего пока нет
+
+- `vite-plugin-pwa` / офлайн-шелл приложения (сам Yjs-документ уже кэшируется
+  в IndexedDB и переживает разрыв связи — это часть офлайн-истории уже
+  работает, но service worker для самого приложения не подключён)
+- react-konva для доски дизайна, react-markdown для предпросмотра документов
+- Код-сплиттинг Monaco (сборка сейчас кладёт весь редактор в один чанк
+  ~3.7MB — работает, но не оптимизировано под продакшен)
+
+## Локальная разработка
+
+```bash
+cp .env.example .env
+pnpm --filter @collab/web dev
+```
+
+Нужны также запущенные `apps/api` (REST) и `apps/collab` (синхронизация) —
+см. корневой README.

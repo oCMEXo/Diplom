@@ -28,7 +28,12 @@ describe("resolveFileAccess", () => {
 
   async function projectWithFile(ownerId: string, role: "editor" | "viewer" | null, memberId?: string) {
     const project = await prisma.project.create({
-      data: { name: "collab test project", ownerId, members: { create: { userId: ownerId, role: "owner" } } },
+      data: {
+        name: "collab test project",
+        ownerId,
+        inviteCode: randomUUID(),
+        members: { create: { userId: ownerId, role: "owner" } },
+      },
     });
     projectIds.push(project.id);
     if (role && memberId) {

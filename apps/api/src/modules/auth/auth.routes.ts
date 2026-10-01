@@ -3,11 +3,18 @@ import { z } from "zod";
 import {
   authResponseSchema,
   errorResponseSchema,
+  guestLoginSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
 } from "@collab/shared";
-import { loginUser, refreshSession, registerUser, revokeRefreshToken } from "./auth.service.js";
+import {
+  loginAsGuest,
+  loginUser,
+  refreshSession,
+  registerUser,
+  revokeRefreshToken,
+} from "./auth.service.js";
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -35,6 +42,21 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request) => loginUser(request.body),
+  );
+
+  app.post(
+    "/guest",
+    {
+      schema: {
+        tags: ["auth"],
+        body: guestLoginSchema,
+        response: { 201: authResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const result = await loginAsGuest(request.body);
+      return reply.code(201).send(result);
+    },
   );
 
   app.post(

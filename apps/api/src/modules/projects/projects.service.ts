@@ -1,18 +1,27 @@
 import { prisma } from "@collab/db";
-import type { CreateProjectInput, InviteMemberInput, ProjectRole } from "@collab/shared";
+import type { CreateProjectInput, InviteMemberInput, InviteRole, ProjectRole } from "@collab/shared";
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
+import { generateInviteCode } from "../../lib/invite-code.js";
 
-function toProjectDto(
-  project: { id: string; name: string; ownerId: string; createdAt: Date },
-  myRole: ProjectRole,
-) {
+interface ProjectLike {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: Date;
+  inviteCode: string;
+  inviteRole: ProjectRole;
+}
+
+function toProjectDto(project: ProjectLike, myRole: ProjectRole) {
   return {
     id: project.id,
     name: project.name,
     ownerId: project.ownerId,
     createdAt: project.createdAt.toISOString(),
     myRole,
+    inviteCode: project.inviteCode,
+    inviteRole: project.inviteRole as InviteRole,
   };
 }
 
@@ -21,6 +30,7 @@ export async function createProject(userId: string, input: CreateProjectInput) {
     data: {
       name: input.name,
       ownerId: userId,
+      inviteCode: generateInviteCode(),
       members: { create: { userId, role: "owner" } },
     },
   });
@@ -138,4 +148,46 @@ export async function removeMember(
   await prisma.projectMember.delete({
     where: { projectId_userId: { projectId, userId: targetUserId } },
   });
+}
+
+export async function regenerateInviteLink(requesterId: string, projectId: string) {
+  await requireProjectRole(projectId, requesterId, "owner");
+
+  const project = await prisma.project.update({
+    where: { id: projectId },
+    data: { inviteCode: generateInviteCode() },
+  });
+
+  return { inviteCode: project.inviteCode, inviteRole: project.inviteRole as InviteRole };
+}
+
+export async function updateInviteRole(requesterId: string, projectId: string, role: InviteRole) {
+  await requireProjectRole(projectId, requesterId, "owner");
+
+  const project = await prisma.project.update({
+    where: { id: projectId },
+    data: { inviteRole: role },
+  });
+
+  return { inviteCode: project.inviteCode, inviteRole: project.inviteRole as InviteRole };
+}
+
+export async function joinViaInvite(userId: string, inviteCode: string) {
+  const project = await prisma.project.findUnique({ where: { inviteCode } });
+  if (!project) {
+    throw new AppError("Invalid invite link", 404);
+  }
+
+  const existing = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId: project.id, userId } },
+  });
+
+  const role = existing?.role ?? (project.inviteRole as ProjectRole);
+  if (!existing) {
+    await prisma.projectMember.create({
+      data: { projectId: project.id, userId, role },
+    });
+  }
+
+  return toProjectDto(project, role);
 }

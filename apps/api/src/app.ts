@@ -12,6 +12,7 @@ import { authenticatePlugin } from "./plugins/authenticate.js";
 import { AppError } from "./lib/errors.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { projectsRoutes } from "./modules/projects/projects.routes.js";
+import { inviteRoutes } from "./modules/projects/invite.routes.js";
 import { filesRoutes } from "./modules/files/files.routes.js";
 
 export async function buildApp() {
@@ -24,8 +25,8 @@ export async function buildApp() {
     if (error instanceof AppError) {
       return reply.code(error.statusCode).send({ message: error.message });
     }
-    if (error.validation) {
-      return reply.code(400).send({ message: error.message });
+    if (error.validation || (error.statusCode && error.statusCode < 500)) {
+      return reply.code(error.statusCode ?? 400).send({ message: error.message });
     }
     request.log.error(error);
     return reply.code(500).send({ message: "Internal Server Error" });
@@ -52,6 +53,7 @@ export async function buildApp() {
   await app.register(authRoutes, { prefix: "/auth" });
   await app.register(projectsRoutes, { prefix: "/projects" });
   await app.register(filesRoutes, { prefix: "/projects" });
+  await app.register(inviteRoutes);
 
   return app;
 }

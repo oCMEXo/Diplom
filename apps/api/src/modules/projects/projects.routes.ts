@@ -3,10 +3,12 @@ import { z } from "zod";
 import {
   createProjectSchema,
   errorResponseSchema,
+  inviteLinkSchema,
   inviteMemberSchema,
   projectMemberSchema,
   projectSchema,
   projectWithMembersSchema,
+  updateInviteRoleSchema,
   updateMemberRoleSchema,
 } from "@collab/shared";
 import {
@@ -15,7 +17,9 @@ import {
   getProject,
   inviteMember,
   listProjects,
+  regenerateInviteLink,
   removeMember,
+  updateInviteRole,
   updateMemberRole,
 } from "./projects.service.js";
 
@@ -118,6 +122,31 @@ export const projectsRoutes: FastifyPluginAsyncZod = async (app) => {
       );
       return reply.code(204).send(null);
     },
+  );
+
+  app.post(
+    "/:projectId/invite/regenerate",
+    {
+      schema: {
+        tags: ["projects"],
+        params: projectParams,
+        response: { 200: inviteLinkSchema, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request) => regenerateInviteLink(request.userId, request.params.projectId),
+  );
+
+  app.patch(
+    "/:projectId/invite",
+    {
+      schema: {
+        tags: ["projects"],
+        params: projectParams,
+        body: updateInviteRoleSchema,
+        response: { 200: inviteLinkSchema, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request) => updateInviteRole(request.userId, request.params.projectId, request.body.role),
   );
 
   app.delete(

@@ -1,10 +1,22 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@collab/db";
 import { REFRESH_TOKEN_TTL_SECONDS } from "@collab/shared";
-import type { LoginInput, RegisterInput } from "@collab/shared";
+import type { GuestLoginInput, LoginInput, RegisterInput } from "@collab/shared";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { signAccessToken } from "../../lib/jwt.js";
 import { generateRefreshToken, hashRefreshToken } from "../../lib/refresh-token.js";
 import { AppError } from "../../lib/errors.js";
+
+interface UserLike {
+  id: string;
+  email: string;
+  name: string;
+  isGuest: boolean;
+}
+
+function toAuthUser(user: UserLike) {
+  return { id: user.id, email: user.email, name: user.name, isGuest: user.isGuest };
+}
 
 async function issueTokens(user: { id: string; email: string }) {
   const accessToken = signAccessToken({ sub: user.id, email: user.email });
@@ -33,7 +45,7 @@ export async function registerUser(input: RegisterInput) {
   });
 
   const tokens = await issueTokens(user);
-  return { user: { id: user.id, email: user.email, name: user.name }, tokens };
+  return { user: toAuthUser(user), tokens };
 }
 
 export async function loginUser(input: LoginInput) {
@@ -43,7 +55,22 @@ export async function loginUser(input: LoginInput) {
   }
 
   const tokens = await issueTokens(user);
-  return { user: { id: user.id, email: user.email, name: user.name }, tokens };
+  return { user: toAuthUser(user), tokens };
+}
+
+export async function loginAsGuest(input: GuestLoginInput) {
+  const passwordHash = await hashPassword(randomUUID());
+  const user = await prisma.user.create({
+    data: {
+      email: `guest-${randomUUID()}@guest.local`,
+      name: input.name?.trim() || "Гость",
+      passwordHash,
+      isGuest: true,
+    },
+  });
+
+  const tokens = await issueTokens(user);
+  return { user: toAuthUser(user), tokens };
 }
 
 export async function refreshSession(refreshToken: string) {
@@ -60,10 +87,7 @@ export async function refreshSession(refreshToken: string) {
   await prisma.refreshToken.delete({ where: { id: stored.id } });
 
   const tokens = await issueTokens(stored.user);
-  return {
-    user: { id: stored.user.id, email: stored.user.email, name: stored.user.name },
-    tokens,
-  };
+  return { user: toAuthUser(stored.user), tokens };
 }
 
 export async function revokeRefreshToken(refreshToken: string) {

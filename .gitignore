@@ -12,3 +12,4 @@ packages/db/generated/
 apps/web/dist/
 apps/*/dist/
 .vite/
+*.tsbuildinfo

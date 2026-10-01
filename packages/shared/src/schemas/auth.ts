@@ -18,10 +18,16 @@ export const refreshSchema = z.object({
 });
 export type RefreshInput = z.infer<typeof refreshSchema>;
 
+export const guestLoginSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+});
+export type GuestLoginInput = z.infer<typeof guestLoginSchema>;
+
 export const authUserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   name: z.string(),
+  isGuest: z.boolean(),
 });
 export type AuthUser = z.infer<typeof authUserSchema>;
 

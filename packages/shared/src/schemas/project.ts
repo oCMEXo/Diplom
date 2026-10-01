@@ -16,12 +16,17 @@ export const projectMemberSchema = z.object({
 });
 export type ProjectMember = z.infer<typeof projectMemberSchema>;
 
+export const inviteRoleSchema = z.enum(["editor", "viewer"]);
+export type InviteRole = z.infer<typeof inviteRoleSchema>;
+
 export const projectSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   ownerId: z.string().uuid(),
   createdAt: z.string().datetime(),
   myRole: projectRoleSchema,
+  inviteCode: z.string(),
+  inviteRole: inviteRoleSchema,
 });
 export type Project = z.infer<typeof projectSchema>;
 
@@ -32,11 +37,22 @@ export type ProjectWithMembers = z.infer<typeof projectWithMembersSchema>;
 
 export const inviteMemberSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["editor", "viewer"]),
+  role: inviteRoleSchema,
 });
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 
 export const updateMemberRoleSchema = z.object({
-  role: z.enum(["editor", "viewer"]),
+  role: inviteRoleSchema,
 });
 export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
+
+export const updateInviteRoleSchema = z.object({
+  role: inviteRoleSchema,
+});
+export type UpdateInviteRoleInput = z.infer<typeof updateInviteRoleSchema>;
+
+export const inviteLinkSchema = z.object({
+  inviteCode: z.string(),
+  inviteRole: inviteRoleSchema,
+});
+export type InviteLink = z.infer<typeof inviteLinkSchema>;

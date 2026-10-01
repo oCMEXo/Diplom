@@ -24,6 +24,7 @@ model User {
   email        String   @unique
   name         String
   passwordHash String   @map("password_hash")
+  isGuest      Boolean  @default(false) @map("is_guest")
   createdAt    DateTime @default(now()) @map("created_at")
 
   refreshTokens  RefreshToken[]
@@ -48,10 +49,12 @@ model RefreshToken {
 }
 
 model Project {
-  id        String   @id @default(uuid())
-  name      String
-  ownerId   String   @map("owner_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String      @id @default(uuid())
+  name       String
+  ownerId    String      @map("owner_id")
+  inviteCode String      @unique @map("invite_code")
+  inviteRole ProjectRole @default(editor) @map("invite_role")
+  createdAt  DateTime    @default(now()) @map("created_at")
 
   owner   User            @relation("ProjectOwner", fields: [ownerId], references: [id])
   members ProjectMember[]

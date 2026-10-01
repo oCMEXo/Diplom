@@ -6,8 +6,11 @@ import {
   deleteProject,
   getProject,
   inviteMember,
+  joinViaInvite,
   listProjects,
+  regenerateInviteLink,
   removeMember,
+  updateInviteRole,
   updateMemberRole,
 } from "./projects.service.js";
 
@@ -147,5 +150,69 @@ describe("projects.service", () => {
 
     await deleteProject(owner.id, p.id);
     await expect(getProject(owner.id, p.id)).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it("creates a project with a usable invite link defaulting to editor", async () => {
+    const owner = await user();
+    const p = await project(owner.id);
+
+    expect(p.inviteCode).toBeTruthy();
+    expect(p.inviteRole).toBe("editor");
+  });
+
+  it("lets anyone with the invite code join with the configured role", async () => {
+    const owner = await user();
+    const joiner = await user();
+    const p = await project(owner.id);
+
+    const joined = await joinViaInvite(joiner.id, p.inviteCode);
+    expect(joined.id).toBe(p.id);
+    expect(joined.myRole).toBe("editor");
+
+    const fetched = await getProject(owner.id, p.id);
+    expect(fetched.members.find((m) => m.userId === joiner.id)?.role).toBe("editor");
+  });
+
+  it("joining twice with the same code is idempotent and keeps the existing role", async () => {
+    const owner = await user();
+    const joiner = await user();
+    const p = await project(owner.id);
+
+    await joinViaInvite(joiner.id, p.inviteCode);
+    await updateMemberRole(owner.id, p.id, joiner.id, "viewer");
+
+    const rejoined = await joinViaInvite(joiner.id, p.inviteCode);
+    expect(rejoined.myRole).toBe("viewer");
+
+    const fetched = await getProject(owner.id, p.id);
+    expect(fetched.members).toHaveLength(2);
+  });
+
+  it("rejects an unknown invite code", async () => {
+    const joiner = await user();
+    await expect(joinViaInvite(joiner.id, "not-a-real-code")).rejects.toMatchObject({
+      statusCode: 404,
+    });
+  });
+
+  it("only the owner can regenerate the invite link or change its role", async () => {
+    const owner = await user();
+    const editor = await user();
+    const p = await project(owner.id);
+    await inviteMember(owner.id, p.id, { email: editor.email, role: "editor" });
+
+    await expect(regenerateInviteLink(editor.id, p.id)).rejects.toMatchObject({
+      statusCode: 403,
+    });
+
+    const regenerated = await regenerateInviteLink(owner.id, p.id);
+    expect(regenerated.inviteCode).not.toBe(p.inviteCode);
+
+    await expect(joinViaInvite((await user()).id, p.inviteCode)).rejects.toMatchObject({
+      statusCode: 404,
+    });
+
+    const updated = await updateInviteRole(owner.id, p.id, "viewer");
+    expect(updated.inviteRole).toBe("viewer");
   });
 });
