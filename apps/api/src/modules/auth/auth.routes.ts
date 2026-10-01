@@ -7,13 +7,7 @@ import {
   refreshSchema,
   registerSchema,
 } from "@collab/shared";
-import {
-  AuthError,
-  loginUser,
-  refreshSession,
-  registerUser,
-  revokeRefreshToken,
-} from "./auth.service.js";
+import { loginUser, refreshSession, registerUser, revokeRefreshToken } from "./auth.service.js";
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -26,15 +20,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      try {
-        const result = await registerUser(request.body);
-        return reply.code(201).send(result);
-      } catch (err) {
-        if (err instanceof AuthError) {
-          return reply.code(err.statusCode as 409).send({ message: err.message });
-        }
-        throw err;
-      }
+      const result = await registerUser(request.body);
+      return reply.code(201).send(result);
     },
   );
 
@@ -47,17 +34,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         response: { 200: authResponseSchema, 401: errorResponseSchema },
       },
     },
-    async (request, reply) => {
-      try {
-        const result = await loginUser(request.body);
-        return reply.send(result);
-      } catch (err) {
-        if (err instanceof AuthError) {
-          return reply.code(err.statusCode as 401).send({ message: err.message });
-        }
-        throw err;
-      }
-    },
+    async (request) => loginUser(request.body),
   );
 
   app.post(
@@ -69,17 +46,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         response: { 200: authResponseSchema, 401: errorResponseSchema },
       },
     },
-    async (request, reply) => {
-      try {
-        const result = await refreshSession(request.body.refreshToken);
-        return reply.send(result);
-      } catch (err) {
-        if (err instanceof AuthError) {
-          return reply.code(err.statusCode as 401).send({ message: err.message });
-        }
-        throw err;
-      }
-    },
+    async (request) => refreshSession(request.body.refreshToken),
   );
 
   app.post(

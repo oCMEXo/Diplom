@@ -13,6 +13,22 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: collab
+          POSTGRES_PASSWORD: collab
+          POSTGRES_DB: collab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U collab -d collab"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +46,9 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm db:generate
+
+      - name: Apply migrations
+        run: pnpm --filter @collab/db exec prisma migrate deploy
 
       - name: Lint
         run: pnpm lint

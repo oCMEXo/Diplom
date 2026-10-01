@@ -4,15 +4,7 @@ import type { LoginInput, RegisterInput } from "@collab/shared";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { signAccessToken } from "../../lib/jwt.js";
 import { generateRefreshToken, hashRefreshToken } from "../../lib/refresh-token.js";
-
-export class AuthError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number,
-  ) {
-    super(message);
-  }
-}
+import { AppError } from "../../lib/errors.js";
 
 async function issueTokens(user: { id: string; email: string }) {
   const accessToken = signAccessToken({ sub: user.id, email: user.email });
@@ -32,7 +24,7 @@ async function issueTokens(user: { id: string; email: string }) {
 export async function registerUser(input: RegisterInput) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
-    throw new AuthError("Email is already registered", 409);
+    throw new AppError("Email is already registered", 409);
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -47,7 +39,7 @@ export async function registerUser(input: RegisterInput) {
 export async function loginUser(input: LoginInput) {
   const user = await prisma.user.findUnique({ where: { email: input.email } });
   if (!user || !(await verifyPassword(user.passwordHash, input.password))) {
-    throw new AuthError("Invalid email or password", 401);
+    throw new AppError("Invalid email or password", 401);
   }
 
   const tokens = await issueTokens(user);
@@ -62,7 +54,7 @@ export async function refreshSession(refreshToken: string) {
   });
 
   if (!stored || stored.expiresAt < new Date()) {
-    throw new AuthError("Refresh token is invalid or expired", 401);
+    throw new AppError("Refresh token is invalid or expired", 401);
   }
 
   await prisma.refreshToken.delete({ where: { id: stored.id } });
