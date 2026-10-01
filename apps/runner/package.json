@@ -1,0 +1,12 @@
+{
+  "name": "@collab/runner",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo \"runner (BullMQ + Docker) worker lands in a later milestone\" && exit 0",
+    "build": "echo \"runner (BullMQ + Docker) worker lands in a later milestone\" && exit 0",
+    "typecheck": "echo \"(no sources yet)\"",
+    "lint": "echo \"(no sources yet)\"",
+    "test": "echo \"(no tests yet)\""
+  }
+}

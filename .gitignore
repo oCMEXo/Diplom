@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage/
+.turbo/
+packages/db/generated/
+apps/web/dist/
+apps/*/dist/
+.vite/

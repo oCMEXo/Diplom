@@ -1,0 +1,11 @@
+{
+  "name": "@collab/bench",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo \"CRDT vs OT benchmark harness lands with the research part\" && exit 0",
+    "typecheck": "echo \"(no sources yet)\"",
+    "lint": "echo \"(no sources yet)\"",
+    "test": "echo \"(no tests yet)\""
+  }
+}
