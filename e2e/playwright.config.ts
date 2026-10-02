@@ -21,6 +21,7 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
+    colorScheme: "dark",
     // Locally the installed Chrome is used so no browser download is needed; CI installs Chromium.
     channel: process.env.CI ? undefined : "chrome",
     trace: "retain-on-failure",

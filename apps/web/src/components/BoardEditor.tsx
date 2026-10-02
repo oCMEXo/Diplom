@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import type Konva from "konva";
-import { Arrow, Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
+import { Arrow, Circle as KonvaCircle, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import {
   PALETTE,
+  arrowStroke,
   TEXT_SIZE,
   addShape,
   boardBounds,
@@ -16,16 +17,18 @@ import {
   type BoardShape,
   type ShapeType,
 } from "../lib/board";
-import { useCollabDoc } from "../lib/useCollabDoc";
+import { Circle, Download, MousePointer2, MoveUpRight, Redo2, Square, Trash2, Type, Undo2, type LucideIcon } from "lucide-react";
+import { cn } from "../lib/cn";
+import { useCollabDoc, type CollabStatus } from "../lib/useCollabDoc";
 
 type Tool = "select" | ShapeType;
 
-const TOOLS: { id: Tool; label: string }[] = [
-  { id: "select", label: "Выбор" },
-  { id: "rect", label: "Прямоугольник" },
-  { id: "ellipse", label: "Овал" },
-  { id: "text", label: "Текст" },
-  { id: "arrow", label: "Стрелка" },
+const TOOLS: { id: Tool; label: string; icon: LucideIcon }[] = [
+  { id: "select", label: "Выбор", icon: MousePointer2 },
+  { id: "rect", label: "Прямоугольник", icon: Square },
+  { id: "ellipse", label: "Овал", icon: Circle },
+  { id: "text", label: "Текст", icon: Type },
+  { id: "arrow", label: "Стрелка", icon: MoveUpRight },
 ];
 
 const SAFE_COLOR = /^#[0-9a-f]{6}$/i;
@@ -45,12 +48,19 @@ function download(href: string, filename: string) {
   link.click();
 }
 
-function arrowColor(fill: string) {
-  return fill === "#e2e8f0" ? "#334155" : fill;
-}
-
-export function BoardEditor({ fileId, readOnly, fileName }: { fileId: string; readOnly: boolean; fileName: string }) {
+export function BoardEditor({
+  fileId,
+  readOnly,
+  fileName,
+  onStatusChange,
+}: {
+  fileId: string;
+  readOnly: boolean;
+  fileName: string;
+  onStatusChange?: (status: CollabStatus) => void;
+}) {
   const { provider, status } = useCollabDoc(fileId);
+  useEffect(() => onStatusChange?.(status), [status, onStatusChange]);
   const board = useMemo(() => (provider ? openBoard(provider.document) : null), [provider]);
 
   const [shapes, setShapes] = useState<BoardShape[]>([]);
@@ -364,7 +374,7 @@ export function BoardEditor({ fileId, readOnly, fileName }: { fileId: string; re
           />
         );
       case "arrow": {
-        const stroke = arrowColor(shape.fill);
+        const stroke = arrowStroke(shape.fill);
         return (
           <Arrow
             key={shape.id}
@@ -392,83 +402,105 @@ export function BoardEditor({ fileId, readOnly, fileName }: { fileId: string; re
 
   const selected = shapes.find((shape) => shape.id === selectedId);
 
+  const toolButton = (active: boolean) =>
+    cn(
+      "flex h-9 w-9 items-center justify-center rounded-lg transition",
+      active ? "bg-accent text-accent-fg shadow-sm" : "text-muted hover:bg-raised hover:text-fg",
+    );
+
   return (
     <div
-      className="flex h-full flex-col outline-none"
+      className="relative h-full outline-none"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       data-shape-count={shapes.length}
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
-        {canEdit &&
-          TOOLS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setTool(item.id)}
-              className={`rounded border px-2 py-0.5 ${
-                tool === item.id
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-300 hover:bg-white"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+      <div ref={containerRef} className="board-paper absolute inset-0 overflow-hidden">
         {canEdit && (
-          <span className="flex items-center gap-1 pl-1">
-            {PALETTE.map((swatch) => (
+          <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-2xl bg-surface/95 p-1.5 shadow-pop backdrop-blur animate-pop">
+            {TOOLS.map((item) => (
               <button
-                key={swatch}
-                aria-label={`цвет ${swatch}`}
-                onClick={() => chooseColor(swatch)}
-                style={{ backgroundColor: swatch }}
-                className={`h-5 w-5 rounded-full border ${
-                  (selected?.fill ?? color) === swatch ? "border-2 border-slate-900" : "border-slate-300"
-                }`}
-              />
+                key={item.id}
+                onClick={() => setTool(item.id)}
+                aria-label={item.label}
+                aria-pressed={tool === item.id}
+                title={item.label}
+                className={toolButton(tool === item.id)}
+              >
+                <item.icon size={18} />
+              </button>
             ))}
-          </span>
-        )}
-        {canEdit && (
-          <>
-            <button
-              onClick={deleteSelected}
-              disabled={!selectedId}
-              className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white disabled:opacity-40"
-            >
-              Удалить
-            </button>
+            <span className="mx-1.5 h-6 w-px bg-line" />
+            <span className="flex items-center gap-1.5 px-1">
+              {PALETTE.map((swatch) => (
+                <button
+                  key={swatch}
+                  aria-label={`цвет ${swatch}`}
+                  onClick={() => chooseColor(swatch)}
+                  style={{ backgroundColor: swatch }}
+                  className={cn(
+                    "h-5 w-5 rounded-full border border-white/25 transition hover:scale-110",
+                    (selected?.fill ?? color) === swatch ? "scale-110 ring-2 ring-accent ring-offset-2 ring-offset-surface" : "",
+                  )}
+                />
+              ))}
+            </span>
+            <span className="mx-1.5 h-6 w-px bg-line" />
             <button
               onClick={() => undoManager.current?.undo()}
-              className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white"
+              aria-label="Отменить"
+              title="Отменить"
+              className={toolButton(false)}
             >
-              ↶
+              <Undo2 size={17} />
             </button>
             <button
               onClick={() => undoManager.current?.redo()}
-              className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white"
+              aria-label="Повторить"
+              title="Повторить"
+              className={toolButton(false)}
             >
-              ↷
+              <Redo2 size={17} />
             </button>
-          </>
+            <button
+              onClick={deleteSelected}
+              disabled={!selectedId}
+              aria-label="Удалить"
+              title="Удалить выбранное"
+              className={cn(toolButton(false), "disabled:opacity-30 enabled:hover:text-bad")}
+            >
+              <Trash2 size={17} />
+            </button>
+          </div>
         )}
-        <span className="ml-auto flex items-center gap-2">
-          <button onClick={exportPng} className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white">
+
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-xl bg-surface/95 p-1 shadow-card backdrop-blur">
+          <button
+            onClick={exportPng}
+            title="Скачать как PNG"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition hover:bg-raised hover:text-fg"
+          >
+            <Download size={14} />
             PNG
           </button>
-          <button onClick={exportSvg} className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white">
+          <button
+            onClick={exportSvg}
+            title="Скачать как SVG"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition hover:bg-raised hover:text-fg"
+          >
+            <Download size={14} />
             SVG
           </button>
-          <span>
-            {readOnly ? "Только чтение · " : ""}
-            {status === "connected" && "● синхронизировано"}
-            {status === "connecting" && "○ подключение..."}
-            {status === "offline" && "○ офлайн (правки сохранятся локально)"}
-          </span>
-        </span>
-      </div>
+        </div>
 
-      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden bg-white">
+        {shapes.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <p className="rounded-xl bg-white/70 px-4 py-2 text-sm text-slate-500 shadow-sm">
+              {canEdit ? "Выберите фигуру внизу и протяните по полотну" : "Доска пока пуста"}
+            </p>
+          </div>
+        )}
+
         <Stage
           width={size.width}
           height={size.height}
@@ -488,7 +520,7 @@ export function BoardEditor({ fileId, readOnly, fileName }: { fileId: string; re
             />
             {canEdit && selected?.type === "arrow" && (
               <>
-                <Circle
+                <KonvaCircle
                   x={selected.x}
                   y={selected.y}
                   radius={6}
@@ -496,7 +528,7 @@ export function BoardEditor({ fileId, readOnly, fileName }: { fileId: string; re
                   draggable
                   onDragMove={(e) => update(selected.id, { x: e.target.x(), y: e.target.y() })}
                 />
-                <Circle
+                <KonvaCircle
                   x={selected.x2}
                   y={selected.y2}
                   radius={6}

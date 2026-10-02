@@ -3,7 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Collab Code Platform</title>
+    <title>Collab — совместная работа над проектом</title>
+    <meta name="theme-color" content="#0b0d12" />
+    <meta name="description" content="Общее пространство для кода, документов и досок в реальном времени" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <script>
+      // Apply the saved theme before the first paint so there is no flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem("collab.theme");
+          var light = stored ? stored === "light" : window.matchMedia("(prefers-color-scheme: light)").matches;
+          document.documentElement.dataset.theme = light ? "light" : "dark";
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

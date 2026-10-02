@@ -147,6 +147,13 @@ describe("shapesToSvg", () => {
     expect(bounds.width).toBeGreaterThan(300);
   });
 
+  it("draws arrows in a readable shade with a matching arrowhead", () => {
+    const svg = shapesToSvg([shape({ type: "arrow", fill: "#bfdbfe", x2: 120, y2: 40 })]);
+    expect(svg).toContain('stroke="#2563eb"');
+    expect(svg).toContain('marker-end="url(#arrow-2563eb)"');
+    expect(svg).toContain('<marker id="arrow-2563eb"');
+  });
+
   it("has a sensible empty board", () => {
     expect(boardBounds([]).width).toBeGreaterThan(0);
   });

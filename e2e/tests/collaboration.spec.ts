@@ -21,8 +21,8 @@ test("two people edit one file and see each other's changes live", async ({ brow
   const path = `/projects/${project.id}/files/${file.id}`;
   const ownerPage = await openAs(browser, owner, path);
   const guestPage = await openAs(browser, visitor, path);
-  await expect(ownerPage.getByText("● синхронизировано")).toBeVisible();
-  await expect(guestPage.getByText("● синхронизировано")).toBeVisible();
+  await expect(ownerPage.getByText("Синхронизировано")).toBeVisible();
+  await expect(guestPage.getByText("Синхронизировано")).toBeVisible();
 
   await typeInEditor(ownerPage, "x = 'from owner'");
   await expect.poll(() => editorText(guestPage)).toContain("from owner");
@@ -103,7 +103,7 @@ test("code run output is shared with everyone in the project", async ({ browser,
   const guestPage = await openAs(browser, visitor, path);
 
   await typeInEditor(ownerPage, "print(6 * 7)");
-  await ownerPage.getByRole("button", { name: "▷ Запустить" }).click();
+  await ownerPage.getByRole("button", { name: "Запустить" }).click();
 
   await expect(guestPage.locator("pre")).toContainText("42", { timeout: 40_000 });
   await expect(ownerPage.locator("pre")).toContainText("42");
@@ -135,6 +135,28 @@ test("a shape drawn on the board appears for everyone and can be undone", async 
   await expect(ownerBoard).toHaveAttribute("data-shape-count", "1");
   await expect(guestBoard).toHaveAttribute("data-shape-count", "1");
 
-  await ownerPage.getByRole("button", { name: "↶" }).click();
+  await ownerPage.getByRole("button", { name: "Отменить" }).click();
   await expect(guestBoard).toHaveAttribute("data-shape-count", "0");
+});
+
+test("a file can be created from the sidebar and the theme choice is remembered", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Интерфейс");
+  const page = await openAs(browser, owner, `/projects/${project.id}`);
+
+  await page.getByRole("button", { name: "Создать: документ" }).click();
+  await page.getByLabel("Имя файла").fill("заметки.md");
+  await page.getByRole("button", { name: "Создать", exact: true }).click();
+  await expect(page.getByRole("link", { name: "заметки.md" })).toBeVisible();
+  await expect(page).toHaveURL(/\/files\//);
+
+  const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+  const before = await theme();
+  await page.getByRole("button", { name: "Меню профиля" }).click();
+  await page.getByRole("menuitem", { name: /тема/ }).click();
+  const after = await theme();
+  expect(after).not.toBe(before);
+
+  await page.reload();
+  expect(await theme()).toBe(after);
 });

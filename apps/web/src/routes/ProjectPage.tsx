@@ -1,17 +1,42 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useParams } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { FileRecord, FileType, ProjectWithMembers } from "@collab/shared";
 import { api } from "../lib/api";
-import { FileTree } from "../components/FileTree";
-import { MembersPanel } from "../components/MembersPanel";
-import { InviteLinkPanel } from "../components/InviteLinkPanel";
-import { ChatPanel } from "../components/ChatPanel";
+import { cn } from "../lib/cn";
 import { RealtimeProvider } from "../lib/RealtimeContext";
+import { CreateFileDialog } from "../components/CreateFileDialog";
+import { CreateProjectDialog } from "../components/CreateProjectDialog";
+import { InviteDialog } from "../components/InviteDialog";
+import { ProjectNav } from "../components/layout/ProjectNav";
+import { SidePanel } from "../components/layout/SidePanel";
+import type { ShellActions } from "../components/layout/ProjectHeader";
+import { FullScreenLoader } from "../components/ui/Spinner";
+
+export interface ProjectOutletContext {
+  files: FileRecord[];
+  canEdit: boolean;
+  project: ProjectWithMembers;
+  shell: ShellActions;
+  createFile: (type: FileType) => void;
+}
+
+const WIDE = "(min-width: 1280px)";
 
 export function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+
+  const [navOpen, setNavOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(() => window.matchMedia(WIDE).matches);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [creatingFile, setCreatingFile] = useState<FileType | null>(null);
+  const [creatingProject, setCreatingProject] = useState(false);
+
+  // The mobile drawers should not stay open after moving to another page.
+  useEffect(() => setNavOpen(false), [location.pathname]);
 
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
@@ -34,50 +59,75 @@ export function ProjectPage() {
     },
   });
 
-  if (!project || !files) {
-    return <p className="p-6 text-sm text-slate-500">Загрузка...</p>;
-  }
+  if (!project || !files) return <FullScreenLoader label="Открываем проект…" />;
 
   const canEdit = project.myRole === "owner" || project.myRole === "editor";
+  const shell: ShellActions = {
+    openNav: () => setNavOpen(true),
+    togglePanel: () => setPanelOpen((value) => !value),
+    panelOpen,
+    openInvite: () => setInviteOpen(true),
+  };
 
   return (
     <RealtimeProvider key={project.id} projectId={project.id}>
-      <div className="flex h-screen">
-        <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
-          <div className="flex items-center justify-between border-b border-slate-200 p-3">
-            <Link to="/" className="text-xs text-slate-400 hover:text-slate-600">
-              ← проекты
-            </Link>
-          </div>
-          <div className="border-b border-slate-200 p-3">
-            <h1 className="truncate text-sm font-semibold text-slate-900">{project.name}</h1>
-            <span className="text-xs uppercase text-slate-400">{project.myRole}</span>
-          </div>
-          <div className="min-h-0 flex-1">
-            <FileTree
-              projectId={project.id}
-              files={files}
-              canEdit={canEdit}
-              onCreate={(path, type) => createFile.mutate({ path, type })}
-            />
-          </div>
-          <InviteLinkPanel
-            projectId={project.id}
-            inviteCode={project.inviteCode}
-            inviteRole={project.inviteRole}
-            isOwner={project.myRole === "owner"}
+      <div className="flex h-screen overflow-hidden">
+        {navOpen && (
+          <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm animate-fade-in lg:hidden" onClick={() => setNavOpen(false)} />
+        )}
+        <div
+          className={cn(
+            "fixed inset-y-0 left-0 z-40 shrink-0 transition-transform duration-200 lg:static lg:translate-x-0",
+            navOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <ProjectNav
+            project={project}
+            files={files}
+            canEdit={canEdit}
+            onCreateFile={setCreatingFile}
+            onCreateProject={() => setCreatingProject(true)}
+            onInvite={() => setInviteOpen(true)}
+            onNavigate={() => setNavOpen(false)}
           />
-          <MembersPanel projectId={project.id} members={project.members} isOwner={project.myRole === "owner"} />
-        </aside>
+        </div>
 
-        <main className="min-w-0 flex-1">
-          <Outlet context={{ files, canEdit }} />
+        <main className="flex min-w-0 flex-1 flex-col">
+          <Outlet
+            context={
+              { files, canEdit, project, shell, createFile: setCreatingFile } satisfies ProjectOutletContext
+            }
+          />
         </main>
 
-        <aside className="w-72 shrink-0 border-l border-slate-200 bg-white">
-          <ChatPanel key={project.id} projectId={project.id} />
-        </aside>
+        {panelOpen && (
+          <>
+            <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm animate-fade-in xl:hidden" onClick={shell.togglePanel} />
+            <aside className="fixed inset-y-0 right-0 z-40 w-80 max-w-[90vw] border-l border-line animate-slide-in xl:static xl:z-auto">
+              <SidePanel project={project} onInvite={shell.openInvite} onClose={shell.togglePanel} />
+            </aside>
+          </>
+        )}
       </div>
+
+      {inviteOpen && <InviteDialog project={project} onClose={() => setInviteOpen(false)} />}
+      {creatingFile && (
+        <CreateFileDialog
+          initialType={creatingFile}
+          files={files}
+          onClose={() => setCreatingFile(null)}
+          onCreate={(path, type) => createFile.mutate({ path, type })}
+        />
+      )}
+      {creatingProject && (
+        <CreateProjectDialog
+          onClose={() => setCreatingProject(false)}
+          onCreated={(created) => {
+            setCreatingProject(false);
+            navigate(`/projects/${created.id}`);
+          }}
+        />
+      )}
     </RealtimeProvider>
   );
 }

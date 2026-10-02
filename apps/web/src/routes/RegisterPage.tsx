@@ -2,6 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
+import { AuthShell } from "../components/layout/AuthShell";
+import { Button } from "../components/ui/Button";
+import { ErrorNote, Field } from "../components/ui/Field";
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -28,58 +31,34 @@ export function RegisterPage() {
     }
   }
 
+  const loginLink = `/login${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow">
-        <h1 className="text-xl font-semibold text-slate-900">Регистрация</h1>
-        {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Имя</label>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Пароль</label>
-          <input
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {loading ? "Создаём..." : "Создать аккаунт"}
-        </button>
-        <p className="text-center text-sm text-slate-500">
+    <AuthShell title="Создать аккаунт" subtitle="Свои проекты, приглашения и история — всё в одном месте.">
+      <form onSubmit={onSubmit} className="space-y-4">
+        {error && <ErrorNote>{error}</ErrorNote>}
+        <Field label="Имя" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Field
+          label="Пароль"
+          type="password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          hint="Не короче 8 символов"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" variant="primary" size="lg" disabled={loading} className="w-full">
+          {loading ? "Создаём…" : "Создать аккаунт"}
+        </Button>
+        <p className="pt-2 text-center text-sm text-muted">
           Уже есть аккаунт?{" "}
-          <Link
-            to={`/login${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
-            className="text-slate-900 underline"
-          >
+          <Link to={loginLink} className="font-medium text-accent hover:underline">
             Войти
           </Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

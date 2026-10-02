@@ -3,6 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { AuthProvider } from "./lib/auth";
+import { ThemeProvider } from "./lib/theme";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./routes/LoginPage";
 import { RegisterPage } from "./routes/RegisterPage";
@@ -37,6 +38,7 @@ export function App() {
       client={queryClient}
       persistOptions={{ persister, maxAge: WEEK_MS }}
     >
+      <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -54,6 +56,7 @@ export function App() {
           </Routes>
         </BrowserRouter>
       </AuthProvider>
+      </ThemeProvider>
     </PersistQueryClientProvider>
   );
 }

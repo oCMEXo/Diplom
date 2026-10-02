@@ -1,20 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import Editor, { type Monaco, type OnMount } from "@monaco-editor/react";
-import { HocuspocusProvider } from "@hocuspocus/provider";
 import { MonacoBinding } from "y-monaco";
-import { IndexeddbPersistence } from "y-indexeddb";
-import { tokenStore } from "../lib/tokenStore";
+import { MONACO_THEME } from "../lib/monaco-setup";
 import { installRemoteCursorStyles } from "../lib/cursor-styles";
-
-const COLLAB_URL = import.meta.env.VITE_COLLAB_URL;
-
-const CURSOR_COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
-
-function colorForUser(userId: string) {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i += 1) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
-  return CURSOR_COLORS[hash % CURSOR_COLORS.length];
-}
+import { useCollabDoc, type CollabStatus } from "../lib/useCollabDoc";
+import { useTheme } from "../lib/theme";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 
 export interface EditorController {
   getCode: () => string;
@@ -31,65 +22,42 @@ export function CollabEditor({
   fileId,
   language,
   readOnly,
-  headerExtra,
+  onStatusChange,
   onReady,
 }: {
   fileId: string;
   language: string | null;
   readOnly: boolean;
-  headerExtra?: ReactNode;
+  onStatusChange?: (status: CollabStatus) => void;
   onReady?: (controller: EditorController) => void;
 }) {
-  const [status, setStatus] = useState<"connecting" | "connected" | "offline">("connecting");
-  const providerRef = useRef<HocuspocusProvider | null>(null);
+  const { provider, status } = useCollabDoc(fileId);
+  const { theme } = useTheme();
   const bindingRef = useRef<MonacoBinding | null>(null);
+  const providerRef = useRef<HocuspocusProvider | null>(null);
+  providerRef.current = provider;
   const monacoRef = useRef<Monaco | null>(null);
 
+  useEffect(() => onStatusChange?.(status), [status, onStatusChange]);
+
   useEffect(() => {
-    const auth = tokenStore.get();
-    if (!auth) return;
-
-    const provider = new HocuspocusProvider({
-      url: COLLAB_URL,
-      name: fileId,
-      token: auth.tokens.accessToken,
-      onStatus: ({ status }) => setStatus(status === "connected" ? "connected" : "offline"),
-    });
-    providerRef.current = provider;
-
-    new IndexeddbPersistence(fileId, provider.document);
-
-    const user = tokenStore.get()?.user;
-    if (user) {
-      provider.setAwarenessField("user", { name: user.name, color: colorForUser(user.id) });
-    }
-
-    const stopCursorStyles = provider.awareness ? installRemoteCursorStyles(provider.awareness) : undefined;
-
+    const awareness = provider?.awareness;
+    const stop = awareness ? installRemoteCursorStyles(awareness) : undefined;
     return () => {
-      stopCursorStyles?.();
+      stop?.();
       bindingRef.current?.destroy();
       bindingRef.current = null;
-      provider.destroy();
-      providerRef.current = null;
     };
-  }, [fileId]);
+  }, [provider]);
 
   const handleMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
-    const provider = providerRef.current;
-    if (!provider) return;
-
+    const current = providerRef.current;
     const model = editor.getModel();
-    if (!model) return;
+    if (!current || !model) return;
 
-    const yText = provider.document.getText("monaco");
-    bindingRef.current = new MonacoBinding(
-      yText,
-      model,
-      new Set([editor]),
-      provider.awareness ?? undefined,
-    );
+    const yText = current.document.getText("monaco");
+    bindingRef.current = new MonacoBinding(yText, model, new Set([editor]), current.awareness ?? undefined);
 
     const errorMarks = editor.createDecorationsCollection();
     onReady?.({
@@ -114,28 +82,35 @@ export function CollabEditor({
     });
   };
 
+  if (!provider) return null;
+
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
-        <span>{readOnly ? "Только чтение" : "Редактирование"}</span>
-        <span className="flex items-center gap-3">
-          {headerExtra}
-          <span>
-            {status === "connected" && "● синхронизировано"}
-            {status === "connecting" && "○ подключение..."}
-            {status === "offline" && "○ офлайн (правки сохранятся локально)"}
-          </span>
-        </span>
-      </div>
-      <div className="min-h-0 flex-1">
-        <Editor
-          key={fileId}
-          language={languageFor(language)}
-          onMount={handleMount}
-          options={{ readOnly, minimap: { enabled: false }, fontSize: 13 }}
-          theme="vs"
-        />
-      </div>
-    </div>
+    <Editor
+      key={fileId}
+      language={languageFor(language)}
+      onMount={handleMount}
+      theme={MONACO_THEME[theme]}
+      loading={<span className="text-sm text-muted">Загружаем редактор…</span>}
+      options={{
+        readOnly,
+        minimap: { enabled: false },
+        fontSize: 13.5,
+        fontFamily: '"JetBrains Mono Variable", ui-monospace, monospace',
+        fontLigatures: true,
+        lineHeight: 22,
+        padding: { top: 16, bottom: 16 },
+        scrollBeyondLastLine: false,
+        smoothScrolling: true,
+        cursorBlinking: "smooth",
+        cursorSmoothCaretAnimation: "on",
+        renderLineHighlight: "gutter",
+        roundedSelection: true,
+        overviewRulerLanes: 0,
+        hideCursorInOverviewRuler: true,
+        automaticLayout: true,
+        wordWrap: language === "markdown" ? "on" : "off",
+        scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10 },
+      }}
+    />
   );
 }

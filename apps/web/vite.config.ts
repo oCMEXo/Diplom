@@ -9,14 +9,14 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "Collab Code Platform",
+        name: "Collab",
         short_name: "Collab",
         description: "Совместное редактирование кода, документов и досок в реальном времени",
         lang: "ru",
         display: "standalone",
         start_url: "/",
-        theme_color: "#0f172a",
-        background_color: "#f8fafc",
+        theme_color: "#0b0d12",
+        background_color: "#0b0d12",
         icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
       },
       workbox: {

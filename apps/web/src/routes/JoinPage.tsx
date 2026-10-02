@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
+import { LinkIcon, TriangleAlert } from "lucide-react";
 import type { Project } from "@collab/shared";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
+import { Wordmark } from "../components/ui/Logo";
 
 export function JoinPage() {
   const { code } = useParams<{ code: string }>();
@@ -29,15 +33,30 @@ export function JoinPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="max-w-sm rounded-lg bg-white p-8 text-center shadow">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-5">
+      <Wordmark />
+      <div className="w-full max-w-sm rounded-2xl bg-surface p-8 text-center shadow-card animate-pop">
         {error ? (
           <>
-            <p className="mb-2 text-sm font-medium text-red-700">Не получилось присоединиться</p>
-            <p className="text-sm text-slate-500">{error}</p>
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-bad/15 text-bad">
+              <TriangleAlert size={22} />
+            </span>
+            <p className="font-semibold">Не получилось присоединиться</p>
+            <p className="mb-5 mt-1.5 text-sm text-muted">{error}</p>
+            <Link to="/">
+              <Button>К моим проектам</Button>
+            </Link>
           </>
         ) : (
-          <p className="text-sm text-slate-500">Присоединяемся к проекту...</p>
+          <>
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-accent">
+              <LinkIcon size={22} />
+            </span>
+            <p className="font-semibold">Присоединяемся к проекту</p>
+            <div className="mt-4 flex justify-center">
+              <Spinner />
+            </div>
+          </>
         )}
       </div>
     </div>

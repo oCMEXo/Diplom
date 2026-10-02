@@ -1,86 +1,55 @@
-import { useState, type FormEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { UserPlus } from "lucide-react";
 import type { ProjectMember } from "@collab/shared";
-import { api, ApiError } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { useOnlineUsers } from "../lib/RealtimeContext";
+import { Avatar } from "./ui/Avatar";
+import { Button } from "./ui/Button";
+import { RoleBadge } from "./ui/RoleBadge";
 
-export function MembersPanel({
-  projectId,
-  members,
-  isOwner,
-}: {
-  projectId: string;
-  members: ProjectMember[];
-  isOwner: boolean;
-}) {
-  const queryClient = useQueryClient();
-  const onlineIds = new Set(useOnlineUsers().map((user) => user.id));
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"editor" | "viewer">("editor");
-  const [error, setError] = useState<string | null>(null);
-
-  const invite = useMutation({
-    mutationFn: () => api.post(`/projects/${projectId}/members`, { email, role }),
-    onSuccess: () => {
-      setEmail("");
-      setError(null);
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Не удалось пригласить"),
-  });
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (email.trim()) invite.mutate();
-  }
+export function MembersPanel({ members, onInvite }: { members: ProjectMember[]; onInvite: () => void }) {
+  const { user } = useAuth();
+  const online = useOnlineUsers();
+  const onlineIds = new Set(online.map((person) => person.id));
+  const sorted = [...members].sort(
+    (a, b) => Number(onlineIds.has(b.userId)) - Number(onlineIds.has(a.userId)) || a.name.localeCompare(b.name),
+  );
+  // Guests who came through an invite link are in the project's presence list too.
+  const memberIds = new Set(members.map((member) => member.userId));
+  const visitors = online.filter((person) => !memberIds.has(person.id));
 
   return (
-    <div className="space-y-3 border-t border-slate-200 p-3">
-      <h2 className="text-xs font-semibold uppercase text-slate-400">Участники</h2>
-      <ul className="space-y-1">
-        {members.map((member) => (
-          <li key={member.userId} className="flex items-center justify-between text-sm">
-            <span className="flex min-w-0 items-center gap-1.5 text-slate-700">
-              <span
-                title={onlineIds.has(member.userId) ? "в сети" : "не в сети"}
-                className={`h-2 w-2 shrink-0 rounded-full ${onlineIds.has(member.userId) ? "bg-emerald-500" : "bg-slate-300"}`}
-              />
-              <span className="truncate">{member.name}</span>
-            </span>
-            <span className="text-xs uppercase text-slate-400">{member.role}</span>
-          </li>
-        ))}
-      </ul>
-
-      {isOwner && (
-        <form onSubmit={onSubmit} className="space-y-1">
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="email участника"
-            className="w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none"
-          />
-          <div className="flex gap-1">
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
-              className="rounded border border-slate-300 px-1 py-1 text-xs"
-            >
-              <option value="editor">editor</option>
-              <option value="viewer">viewer</option>
-            </select>
-            <button
-              type="submit"
-              disabled={invite.isPending}
-              className="flex-1 rounded bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-            >
-              Пригласить
-            </button>
-          </div>
-        </form>
-      )}
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+        <ul className="space-y-0.5">
+          {sorted.map((member) => (
+            <li key={member.userId} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-raised/60">
+              <Avatar id={member.userId} name={member.name} online={onlineIds.has(member.userId)} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">
+                  {member.name}
+                  {member.userId === user?.id && <span className="ml-1.5 text-xs font-normal text-faint">это вы</span>}
+                </p>
+              </div>
+              <RoleBadge role={member.role} />
+            </li>
+          ))}
+          {visitors.map((person) => (
+            <li key={person.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-raised/60">
+              <Avatar id={person.id} name={person.name} online />
+              <p className="min-w-0 flex-1 truncate text-sm font-medium">
+                {person.name}
+                {person.isGuest && <span className="ml-1.5 text-xs font-normal text-faint">гость</span>}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="border-t border-line p-3">
+        <Button className="w-full" onClick={onInvite}>
+          <UserPlus size={15} />
+          Пригласить
+        </Button>
+      </div>
     </div>
   );
 }

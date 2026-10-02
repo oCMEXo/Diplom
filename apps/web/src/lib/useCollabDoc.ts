@@ -1,17 +1,10 @@
 import { useEffect, useState } from "react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
+import { colorForUser } from "./colors";
 import { tokenStore } from "./tokenStore";
 
 const COLLAB_URL = import.meta.env.VITE_COLLAB_URL;
-
-const USER_COLORS = ["#f87171", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f472b6"];
-
-export function colorForUser(userId: string) {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i += 1) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
-  return USER_COLORS[hash % USER_COLORS.length]!;
-}
 
 export type CollabStatus = "connecting" | "connected" | "offline";
 

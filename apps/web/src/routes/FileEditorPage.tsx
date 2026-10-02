@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
-import { inferLanguage, toRunnableLanguage, type FileRecord } from "@collab/shared";
+import { Eye, LoaderCircle, Play } from "lucide-react";
+import { inferLanguage, toRunnableLanguage } from "@collab/shared";
 import { BoardEditor } from "../components/BoardEditor";
 import { CollabEditor, type EditorController } from "../components/CollabEditor";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { RunPanel } from "../components/RunPanel";
+import { FILE_KINDS } from "../components/layout/ProjectNav";
+import { ProjectHeader, type SyncStatus } from "../components/layout/ProjectHeader";
+import { Button } from "../components/ui/Button";
 import { api, ApiError } from "../lib/api";
+import { cn } from "../lib/cn";
 import { useRun } from "../lib/RealtimeContext";
-
-interface ProjectOutletContext {
-  files: FileRecord[];
-  canEdit: boolean;
-}
+import type { ProjectOutletContext } from "./ProjectPage";
 
 export function FileEditorPage() {
   const { projectId, fileId } = useParams<{ projectId: string; fileId: string }>();
-  const { files, canEdit } = useOutletContext<ProjectOutletContext>();
+  const { files, canEdit, shell } = useOutletContext<ProjectOutletContext>();
   const file = files.find((f) => f.id === fileId);
   const controller = useRef<EditorController | null>(null);
   const [activeController, setActiveController] = useState<EditorController | null>(null);
+  const [status, setStatus] = useState<SyncStatus>("connecting");
   const run = useRun(fileId ?? "");
   const runRef = useRef(run);
   runRef.current = run;
@@ -28,6 +30,7 @@ export function FileEditorPage() {
     controller.current = null;
     setActiveController(null);
     setRunError(null);
+    setStatus("connecting");
   }, [fileId]);
 
   useEffect(() => {
@@ -36,17 +39,37 @@ export function FileEditorPage() {
   }, [run?.runId, run?.status, run?.errorLine]);
 
   if (!file || !projectId) {
-    return <p className="p-6 text-sm text-slate-500">Файл не найден.</p>;
+    return (
+      <>
+        <ProjectHeader shell={shell} title="Файл не найден" />
+        <p className="p-8 text-sm text-muted">Возможно, файл удалили или у вас нет к нему доступа.</p>
+      </>
+    );
   }
+
+  const kind = FILE_KINDS[file.type];
+  const name = file.path.split("/").pop() ?? file.path;
+  const header = {
+    shell,
+    status,
+    title: file.path,
+    icon: <kind.icon size={17} className={cn("shrink-0", kind.tone)} />,
+    badge: !canEdit ? (
+      <span className="inline-flex items-center gap-1 rounded-md bg-raised px-1.5 py-0.5 text-[10px] font-medium text-muted">
+        <Eye size={10} />
+        только чтение
+      </span>
+    ) : undefined,
+  };
 
   if (file.type === "board") {
     return (
-      <BoardEditor
-        key={file.id}
-        fileId={file.id}
-        readOnly={!canEdit}
-        fileName={file.path.split("/").pop() ?? "board"}
-      />
+      <>
+        <ProjectHeader {...header} />
+        <div className="min-h-0 flex-1">
+          <BoardEditor key={file.id} fileId={file.id} readOnly={!canEdit} fileName={name} onStatusChange={setStatus} />
+        </div>
+      </>
     );
   }
 
@@ -72,43 +95,45 @@ export function FileEditorPage() {
       fileId={file.id}
       language={language}
       readOnly={!canEdit}
+      onStatusChange={setStatus}
       onReady={(c) => {
         controller.current = c;
         setActiveController(c);
         if (runRef.current?.status === "error") c.setErrorLine(runRef.current.errorLine);
       }}
-      headerExtra={
-        runnable && canEdit ? (
-          <span className="flex items-center gap-2">
-            {runError && <span className="text-red-600">{runError}</span>}
-            <button
-              onClick={startRun}
-              disabled={running}
-              className="rounded border border-slate-300 px-2 py-0.5 text-slate-600 hover:bg-white disabled:opacity-50"
-            >
-              {running ? "Выполняется…" : "▷ Запустить"}
-            </button>
-          </span>
-        ) : null
-      }
     />
   );
 
+  const actions =
+    runnable && canEdit ? (
+      <span className="flex items-center gap-2">
+        {runError && <span className="text-xs text-bad">{runError}</span>}
+        <Button size="sm" onClick={startRun} disabled={running}>
+          {running ? <LoaderCircle size={14} className="animate-spin" /> : <Play size={13} className="fill-current text-ok" />}
+          {running ? "Выполняется…" : "Запустить"}
+        </Button>
+      </span>
+    ) : undefined;
+
   if (isDoc) {
     return (
-      <div className="grid h-full grid-cols-2">
-        <div className="min-w-0 border-r border-slate-200">{editor}</div>
-        <div className="min-w-0">
-          <MarkdownPreview controller={activeController} />
+      <>
+        <ProjectHeader {...header} actions={actions} />
+        <div className="grid min-h-0 flex-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1">
+          <div className="min-h-0 min-w-0 border-b border-line md:border-b-0 md:border-r">{editor}</div>
+          <div className="min-h-0 min-w-0">
+            <MarkdownPreview controller={activeController} />
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <>
+      <ProjectHeader {...header} actions={actions} />
       <div className="min-h-0 flex-1">{editor}</div>
       {runnable && <RunPanel run={run} />}
-    </div>
+    </>
   );
 }

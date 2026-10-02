@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
+import { AuthShell } from "../components/layout/AuthShell";
+import { Button } from "../components/ui/Button";
+import { ErrorNote, Field } from "../components/ui/Field";
 
 export function LoginPage() {
   const { login, continueAsGuest } = useAuth();
@@ -40,56 +44,44 @@ export function LoginPage() {
     }
   }
 
+  const registerLink = `/register${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow">
-        <h1 className="text-xl font-semibold text-slate-900">Вход</h1>
-        {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
+    <AuthShell title="С возвращением" subtitle="Войдите, чтобы продолжить работу над проектами.">
+      <form onSubmit={onSubmit} className="space-y-4">
+        {error && <ErrorNote>{error}</ErrorNote>}
+        <Field label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Field
+          label="Пароль"
+          type="password"
+          required
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" variant="primary" size="lg" disabled={loading} className="w-full">
+          {loading ? "Входим…" : "Войти"}
+        </Button>
+
+        <div className="flex items-center gap-3 text-xs text-faint">
+          <span className="h-px flex-1 bg-line" />
+          или
+          <span className="h-px flex-1 bg-line" />
         </div>
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-700">Пароль</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {loading ? "Входим..." : "Войти"}
-        </button>
-        <button
-          type="button"
-          onClick={onGuest}
-          disabled={loading}
-          className="w-full rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
+
+        <Button size="lg" onClick={onGuest} disabled={loading} className="w-full">
+          <Sparkles size={16} className="text-accent" />
           Продолжить как гость
-        </button>
-        <p className="text-center text-sm text-slate-500">
+        </Button>
+        <p className="text-center text-xs text-faint">Гостю не нужны ни почта, ни пароль — достаточно открыть ссылку.</p>
+
+        <p className="pt-2 text-center text-sm text-muted">
           Нет аккаунта?{" "}
-          <Link
-            to={`/register${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
-            className="text-slate-900 underline"
-          >
+          <Link to={registerLink} className="font-medium text-accent hover:underline">
             Зарегистрироваться
           </Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

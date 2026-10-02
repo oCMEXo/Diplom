@@ -21,6 +21,21 @@ export const PALETTE = ["#fde68a", "#bfdbfe", "#bbf7d0", "#fecaca", "#e9d5ff", "
 
 export const TEXT_SIZE = 18;
 
+/** Pastel fills are too faint for a thin line, so arrows use a deeper shade of the chosen color. */
+const ARROW_STROKES: Record<string, string> = {
+  "#fde68a": "#d97706",
+  "#bfdbfe": "#2563eb",
+  "#bbf7d0": "#16a34a",
+  "#fecaca": "#dc2626",
+  "#e9d5ff": "#9333ea",
+  "#e2e8f0": "#475569",
+  "#0f172a": "#0f172a",
+};
+
+export function arrowStroke(fill: string) {
+  return ARROW_STROKES[fill.toLowerCase()] ?? "#475569";
+}
+
 export type ShapesMap = Y.Map<Y.Map<unknown>>;
 export type OrderArray = Y.Array<string>;
 
@@ -155,14 +170,19 @@ export function shapesToSvg(shapes: BoardShape[]): string {
       case "ellipse":
         return `<ellipse cx="${s.x + s.w / 2}" cy="${s.y + s.h / 2}" rx="${Math.abs(s.w / 2)}" ry="${Math.abs(s.h / 2)}" fill="${fill}" stroke="#334155" stroke-width="1.5"/>`;
       case "arrow":
-        return `<line x1="${s.x}" y1="${s.y}" x2="${s.x2}" y2="${s.y2}" stroke="${fill === "#e2e8f0" ? "#334155" : fill}" stroke-width="3" marker-end="url(#arrow)"/>`;
+        return `<line x1="${s.x}" y1="${s.y}" x2="${s.x2}" y2="${s.y2}" stroke="${arrowStroke(fill)}" stroke-width="3" marker-end="url(#arrow-${arrowStroke(fill).slice(1)})"/>`;
       case "text":
         return `<text x="${s.x}" y="${s.y + TEXT_SIZE}" font-family="system-ui, sans-serif" font-size="${TEXT_SIZE}" fill="#0f172a">${escapeXml(s.text)}</text>`;
     }
   });
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}" width="${bounds.width}" height="${bounds.height}">`,
-    `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/></marker></defs>`,
+    `<defs>${[...new Set(shapes.filter((s) => s.type === "arrow").map((s) => arrowStroke(safeFill(s.fill))))]
+      .map(
+        (color) =>
+          `<marker id="arrow-${color.slice(1)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="${color}"/></marker>`,
+      )
+      .join("")}</defs>`,
     `<rect x="${bounds.x}" y="${bounds.y}" width="${bounds.width}" height="${bounds.height}" fill="#ffffff"/>`,
     ...body,
     "</svg>",
