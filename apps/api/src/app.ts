@@ -1,5 +1,6 @@
 import Fastify, { type FastifyError } from "fastify";
 import cors from "@fastify/cors";
+import websocket from "@fastify/websocket";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import {
@@ -14,6 +15,8 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { projectsRoutes } from "./modules/projects/projects.routes.js";
 import { inviteRoutes } from "./modules/projects/invite.routes.js";
 import { filesRoutes } from "./modules/files/files.routes.js";
+import { messagesRoutes } from "./modules/messages/messages.routes.js";
+import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -33,6 +36,7 @@ export async function buildApp() {
   });
 
   await app.register(cors, { origin: env.CORS_ORIGIN, credentials: true });
+  await app.register(websocket);
   await app.register(authenticatePlugin);
 
   await app.register(swagger, {
@@ -54,6 +58,8 @@ export async function buildApp() {
   await app.register(projectsRoutes, { prefix: "/projects" });
   await app.register(filesRoutes, { prefix: "/projects" });
   await app.register(inviteRoutes);
+  await app.register(messagesRoutes, { prefix: "/projects" });
+  await app.register(realtimeRoutes);
 
   return app;
 }

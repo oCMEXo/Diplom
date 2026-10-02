@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { FileTree } from "../components/FileTree";
 import { MembersPanel } from "../components/MembersPanel";
 import { InviteLinkPanel } from "../components/InviteLinkPanel";
+import { ChatPanel } from "../components/ChatPanel";
 
 export function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -70,6 +71,10 @@ export function ProjectPage() {
       <main className="min-w-0 flex-1">
         <Outlet context={{ files, canEdit }} />
       </main>
+
+      <aside className="w-72 shrink-0 border-l border-slate-200 bg-white">
+        <ChatPanel key={project.id} projectId={project.id} />
+      </aside>
     </div>
   );
 }
