@@ -4,6 +4,7 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import { MonacoBinding } from "y-monaco";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { tokenStore } from "../lib/tokenStore";
+import { installRemoteCursorStyles } from "../lib/cursor-styles";
 
 const COLLAB_URL = import.meta.env.VITE_COLLAB_URL;
 
@@ -17,6 +18,8 @@ function colorForUser(userId: string) {
 
 export interface EditorController {
   getCode: () => string;
+  /** Calls the handler with the full text now and after every change (local or remote). */
+  subscribe: (handler: (text: string) => void) => () => void;
   setErrorLine: (line: number | null) => void;
 }
 
@@ -61,7 +64,10 @@ export function CollabEditor({
       provider.setAwarenessField("user", { name: user.name, color: colorForUser(user.id) });
     }
 
+    const stopCursorStyles = provider.awareness ? installRemoteCursorStyles(provider.awareness) : undefined;
+
     return () => {
+      stopCursorStyles?.();
       bindingRef.current?.destroy();
       bindingRef.current = null;
       provider.destroy();
@@ -88,6 +94,12 @@ export function CollabEditor({
     const errorMarks = editor.createDecorationsCollection();
     onReady?.({
       getCode: () => yText.toString(),
+      subscribe: (handler) => {
+        const listener = () => handler(yText.toString());
+        yText.observe(listener);
+        listener();
+        return () => yText.unobserve(listener);
+      },
       setErrorLine: (line) =>
         errorMarks.set(
           line

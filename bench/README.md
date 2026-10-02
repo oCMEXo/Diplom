@@ -1,9 +1,37 @@
 # bench
 
-Stand for the thesis's research question: Yjs (CRDT) vs ShareDB (OT) under the
-same simulated load (N concurrent typists, same-line conflict storm, offline
-reconnect). Measures sync latency (avg/p50/p95/p99), correctness (hash
-convergence), server CPU/memory, bytes per edit, document size growth, and
-offline merge time.
+Стенд для исследовательского вопроса диплома: Yjs (CRDT) против ShareDB (OT)
+при одинаковой нагрузке.
 
-Not implemented yet — scheduled for the "Исследование" phase of the plan.
+Сценарии:
+
+1. **Одновременный набор** — N ∈ {2, 5, 10, 25, 50, 100} пользователей, два
+   режима (правки в разных местах / все в одну позицию).
+2. **Офлайн** — клиент отключается, делает K правок, затем сливается с остальными.
+3. **Рост документа** — размер состояния и журнала при разной доле удалений.
+4. **Доска** — перемещение фигур (карта регистров вместо текста).
+
+Метрики: задержка (ср./p50/p95/p99), корректность (хеши текста совпали, ничего
+не потеряно), CPU и память сервера, трафик на правку, размер документа, время
+слияния. Серверы и боты работают в отдельных процессах; есть контроль перегрузки
+генератора нагрузки (задержка цикла событий).
+
+## Запуск
+
+```bash
+pnpm --filter @collab/bench bench          # полный набор, около 30 минут
+pnpm --filter @collab/bench bench:quick    # быстрая проверка, около 2 минут
+pnpm --filter @collab/bench test           # смоук-тесты сходимости
+```
+
+Параметры (переменные окружения): `EDITS_PER_SECOND` (по умолчанию 1).
+Ключ `--only=growth` перезапускает только сценарий роста документа.
+
+## Результаты
+
+- `results/latest.json` — сырые данные всех прогонов;
+- `results/REPORT.md` — таблицы и графики;
+- `results/charts/*.svg` — графики.
+
+Интерпретация, ограничения и проверка гипотезы — в
+[docs/thesis/04-research.md](../docs/thesis/04-research.md).

@@ -1,0 +1,87 @@
+# Production stack for ONE EC2 host (ADR-004). PostgreSQL lives in RDS and the
+# frontend is served from S3 + CloudFront, so neither appears here.
+#
+#   cp infra/.env.prod.example infra/.env     # then edit
+#   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
+#   docker compose -f infra/docker-compose.yml --env-file infra/.env run --rm migrate
+name: collab
+
+x-node-service: &node-service
+  restart: unless-stopped
+  env_file: .env
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  api:
+    <<: *node-service
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: app
+      args: { APP: api }
+    environment:
+      PORT: "3001"
+      HOST: 0.0.0.0
+      REDIS_URL: redis://redis:6379
+    depends_on: [redis]
+
+  collab:
+    <<: *node-service
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: app
+      args: { APP: collab }
+    environment:
+      PORT: "1234"
+      HOST: 0.0.0.0
+
+  runner:
+    <<: *node-service
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: runner
+      args: { APP: runner }
+    environment:
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on: [redis]
+
+  migrate:
+    <<: *node-service
+    restart: "no"
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: app
+      args: { APP: api }
+    command: ["sh", "-c", "pnpm --filter @collab/db exec prisma migrate deploy"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      COLLAB_DOMAIN: ${COLLAB_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api, collab]
+
+volumes:
+  redis_data:
+  caddy_data:
+  caddy_config:

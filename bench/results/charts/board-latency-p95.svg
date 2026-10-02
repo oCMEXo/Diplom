@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380" font-family="system-ui, sans-serif" font-size="12">
+<rect width="640" height="380" fill="#ffffff"/>
+<text x="320" y="26" text-anchor="middle" font-size="15" font-weight="600" fill="#0f172a">Доска: задержка p95 при перемещении фигур</text>
+<line x1="72" x2="616" y1="324" y2="324" stroke="#e2e8f0"/>
+<text x="64" y="328" text-anchor="end" fill="#475569">0</text>
+<line x1="72" x2="616" y1="268.8" y2="268.8" stroke="#e2e8f0"/>
+<text x="64" y="272.8" text-anchor="end" fill="#475569">4</text>
+<line x1="72" x2="616" y1="213.6" y2="213.6" stroke="#e2e8f0"/>
+<text x="64" y="217.6" text-anchor="end" fill="#475569">8</text>
+<line x1="72" x2="616" y1="158.4" y2="158.4" stroke="#e2e8f0"/>
+<text x="64" y="162.4" text-anchor="end" fill="#475569">12</text>
+<line x1="72" x2="616" y1="103.19999999999999" y2="103.19999999999999" stroke="#e2e8f0"/>
+<text x="64" y="107.19999999999999" text-anchor="end" fill="#475569">16</text>
+<line x1="72" x2="616" y1="48" y2="48" stroke="#e2e8f0"/>
+<text x="64" y="52" text-anchor="end" fill="#475569">20</text>
+<text x="72" y="344" text-anchor="middle" fill="#475569">2</text>
+<text x="344" y="344" text-anchor="middle" fill="#475569">10</text>
+<text x="616" y="344" text-anchor="middle" fill="#475569">50</text>
+<line x1="72" x2="72" y1="48" y2="324" stroke="#94a3b8"/>
+<line x1="72" x2="616" y1="324" y2="324" stroke="#94a3b8"/>
+<text x="344" y="366" text-anchor="middle" fill="#334155">Число пользователей N</text>
+<text transform="translate(16 186) rotate(-90)" text-anchor="middle" fill="#334155">мс</text>
+<polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="72.0,293.4 344.0,284.2 616.0,75.8"/>
+<circle cx="72.0" cy="293.4" r="3.5" fill="#2563eb"/>
+<circle cx="344.0" cy="284.2" r="3.5" fill="#2563eb"/>
+<circle cx="616.0" cy="75.8" r="3.5" fill="#2563eb"/>
+<polyline fill="none" stroke="#dc2626" stroke-width="2.5" points="72.0,295.3 344.0,279.2 616.0,82.5"/>
+<circle cx="72.0" cy="295.3" r="3.5" fill="#dc2626"/>
+<circle cx="344.0" cy="279.2" r="3.5" fill="#dc2626"/>
+<circle cx="616.0" cy="82.5" r="3.5" fill="#dc2626"/>
+<polyline fill="none" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4" points="72.0,292.9 344.0,280.3 616.0,74.6"/>
+<circle cx="72.0" cy="292.9" r="3.5" fill="#2563eb"/>
+<circle cx="344.0" cy="280.3" r="3.5" fill="#2563eb"/>
+<circle cx="616.0" cy="74.6" r="3.5" fill="#2563eb"/>
+<polyline fill="none" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6 4" points="72.0,291.9 344.0,281.5 616.0,90.2"/>
+<circle cx="72.0" cy="291.9" r="3.5" fill="#dc2626"/>
+<circle cx="344.0" cy="281.5" r="3.5" fill="#dc2626"/>
+<circle cx="616.0" cy="90.2" r="3.5" fill="#dc2626"/>
+<line x1="84" x2="106" y1="38" y2="38" stroke="#2563eb" stroke-width="2.5"/>
+<text x="112" y="42" fill="#334155">Yjs (CRDT), свои фигуры</text>
+<line x1="234" x2="256" y1="38" y2="38" stroke="#dc2626" stroke-width="2.5"/>
+<text x="262" y="42" fill="#334155">ShareDB (OT), свои фигуры</text>
+<line x1="384" x2="406" y1="38" y2="38" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4"/>
+<text x="412" y="42" fill="#334155">Yjs (CRDT), одна фигура</text>
+<line x1="534" x2="556" y1="38" y2="38" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6 4"/>
+<text x="562" y="42" fill="#334155">ShareDB (OT), одна фигура</text>
+</svg>

@@ -1,0 +1,9 @@
+# Caddy obtains and renews HTTPS certificates automatically; WebSocket upgrades
+# are proxied without extra configuration.
+{$API_DOMAIN} {
+	reverse_proxy api:3001
+}
+
+{$COLLAB_DOMAIN} {
+	reverse_proxy collab:1234
+}

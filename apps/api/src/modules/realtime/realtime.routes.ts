@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
+import { prisma } from "@collab/db";
 import { requireProjectRole } from "../../lib/authorization.js";
 import { verifyAccessToken } from "../../lib/jwt.js";
 import { hub } from "../../lib/hub.js";
@@ -37,7 +38,13 @@ export const realtimeRoutes: FastifyPluginAsync = async (app) => {
 
     if (socket.readyState !== socket.OPEN) return;
 
-    const unsubscribe = hub.subscribe(parsed.data.projectId, socket);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, isGuest: true },
+    });
+    if (socket.readyState !== socket.OPEN) return;
+
+    const unsubscribe = hub.subscribe(parsed.data.projectId, socket, user);
     socket.on("close", unsubscribe);
     socket.on("error", unsubscribe);
   });

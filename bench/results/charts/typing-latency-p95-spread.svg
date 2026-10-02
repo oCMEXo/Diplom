@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380" font-family="system-ui, sans-serif" font-size="12">
+<rect width="640" height="380" fill="#ffffff"/>
+<text x="320" y="26" text-anchor="middle" font-size="15" font-weight="600" fill="#0f172a">Задержка синхронизации p95 — правки в разных местах</text>
+<line x1="72" x2="616" y1="324" y2="324" stroke="#e2e8f0"/>
+<text x="64" y="328" text-anchor="end" fill="#475569">0</text>
+<line x1="72" x2="616" y1="268.8" y2="268.8" stroke="#e2e8f0"/>
+<text x="64" y="272.8" text-anchor="end" fill="#475569">10</text>
+<line x1="72" x2="616" y1="213.6" y2="213.6" stroke="#e2e8f0"/>
+<text x="64" y="217.6" text-anchor="end" fill="#475569">20</text>
+<line x1="72" x2="616" y1="158.4" y2="158.4" stroke="#e2e8f0"/>
+<text x="64" y="162.4" text-anchor="end" fill="#475569">30</text>
+<line x1="72" x2="616" y1="103.19999999999999" y2="103.19999999999999" stroke="#e2e8f0"/>
+<text x="64" y="107.19999999999999" text-anchor="end" fill="#475569">40</text>
+<line x1="72" x2="616" y1="48" y2="48" stroke="#e2e8f0"/>
+<text x="64" y="52" text-anchor="end" fill="#475569">50</text>
+<text x="72" y="344" text-anchor="middle" fill="#475569">2</text>
+<text x="180.8" y="344" text-anchor="middle" fill="#475569">5</text>
+<text x="289.6" y="344" text-anchor="middle" fill="#475569">10</text>
+<text x="398.4" y="344" text-anchor="middle" fill="#475569">25</text>
+<text x="507.20000000000005" y="344" text-anchor="middle" fill="#475569">50</text>
+<text x="616" y="344" text-anchor="middle" fill="#475569">100</text>
+<line x1="72" x2="72" y1="48" y2="324" stroke="#94a3b8"/>
+<line x1="72" x2="616" y1="324" y2="324" stroke="#94a3b8"/>
+<text x="344" y="366" text-anchor="middle" fill="#334155">Число пользователей N</text>
+<text transform="translate(16 186) rotate(-90)" text-anchor="middle" fill="#334155">мс</text>
+<polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="72.0,285.3 180.8,305.5 289.6,302.6 398.4,290.7 507.2,267.4 616.0,165.5"/>
+<circle cx="72.0" cy="285.3" r="3.5" fill="#2563eb"/>
+<circle cx="180.8" cy="305.5" r="3.5" fill="#2563eb"/>
+<circle cx="289.6" cy="302.6" r="3.5" fill="#2563eb"/>
+<circle cx="398.4" cy="290.7" r="3.5" fill="#2563eb"/>
+<circle cx="507.2" cy="267.4" r="3.5" fill="#2563eb"/>
+<circle cx="616.0" cy="165.5" r="3.5" fill="#2563eb"/>
+<polyline fill="none" stroke="#dc2626" stroke-width="2.5" points="72.0,305.0 180.8,310.5 289.6,309.4 398.4,286.8 507.2,272.2 616.0,250.1"/>
+<circle cx="72.0" cy="305.0" r="3.5" fill="#dc2626"/>
+<circle cx="180.8" cy="310.5" r="3.5" fill="#dc2626"/>
+<circle cx="289.6" cy="309.4" r="3.5" fill="#dc2626"/>
+<circle cx="398.4" cy="286.8" r="3.5" fill="#dc2626"/>
+<circle cx="507.2" cy="272.2" r="3.5" fill="#dc2626"/>
+<circle cx="616.0" cy="250.1" r="3.5" fill="#dc2626"/>
+<line x1="84" x2="106" y1="38" y2="38" stroke="#2563eb" stroke-width="2.5"/>
+<text x="112" y="42" fill="#334155">Yjs (CRDT)</text>
+<line x1="234" x2="256" y1="38" y2="38" stroke="#dc2626" stroke-width="2.5"/>
+<text x="262" y="42" fill="#334155">ShareDB (OT)</text>
+</svg>

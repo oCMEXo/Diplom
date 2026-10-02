@@ -9,19 +9,26 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint src",
-    "test": "echo \"(no tests yet)\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@collab/shared": "workspace:*",
     "@hocuspocus/provider": "^2.0.0",
     "@monaco-editor/react": "^4.6.0",
-    "@tanstack/react-query": "^5.59.0",
+    "@tanstack/query-sync-storage-persister": "^5.59.0",
+    "@tanstack/react-query": "^5.104.1",
+    "@tanstack/react-query-persist-client": "^5.59.0",
+    "konva": "^9.3.14",
     "monaco-editor": "^0.52.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-konva": "^18.2.10",
+    "react-markdown": "^9.0.1",
     "react-router-dom": "^6.26.2",
+    "remark-gfm": "^4.0.0",
     "y-indexeddb": "^9.0.12",
     "y-monaco": "^0.1.6",
+    "y-protocols": "^1.0.6",
     "yjs": "^13.6.18"
   },
   "devDependencies": {
@@ -33,6 +40,9 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.3",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.1.4",
+    "workbox-window": "^7.1.0"
   }
 }

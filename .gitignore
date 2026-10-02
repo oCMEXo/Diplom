@@ -4,6 +4,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.*.example
 *.log
 .DS_Store
 coverage/
@@ -13,3 +14,7 @@ apps/web/dist/
 apps/*/dist/
 .vite/
 *.tsbuildinfo
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/

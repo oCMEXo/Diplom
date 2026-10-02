@@ -1,0 +1,16 @@
+{
+  "name": "@collab/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint tests playwright.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}

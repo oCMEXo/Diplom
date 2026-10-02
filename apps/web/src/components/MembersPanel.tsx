@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectMember } from "@collab/shared";
 import { api, ApiError } from "../lib/api";
+import { useOnlineUsers } from "../lib/RealtimeContext";
 
 export function MembersPanel({
   projectId,
@@ -13,6 +14,7 @@ export function MembersPanel({
   isOwner: boolean;
 }) {
   const queryClient = useQueryClient();
+  const onlineIds = new Set(useOnlineUsers().map((user) => user.id));
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"editor" | "viewer">("editor");
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,13 @@ export function MembersPanel({
       <ul className="space-y-1">
         {members.map((member) => (
           <li key={member.userId} className="flex items-center justify-between text-sm">
-            <span className="truncate text-slate-700">{member.name}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-slate-700">
+              <span
+                title={onlineIds.has(member.userId) ? "в сети" : "не в сети"}
+                className={`h-2 w-2 shrink-0 rounded-full ${onlineIds.has(member.userId) ? "bg-emerald-500" : "bg-slate-300"}`}
+              />
+              <span className="truncate">{member.name}</span>
+            </span>
             <span className="text-xs uppercase text-slate-400">{member.role}</span>
           </li>
         ))}

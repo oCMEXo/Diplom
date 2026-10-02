@@ -6,9 +6,10 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
-import type { RealtimeEvent, RunStatus } from "@collab/shared";
+import type { PresenceUser, RealtimeEvent, RunStatus } from "@collab/shared";
 import { useProjectEvents, type RealtimeStatus } from "./realtime";
 
 export interface RunState {
@@ -29,6 +30,7 @@ interface RealtimeValue {
   status: RealtimeStatus;
   subscribe: (handler: Handler) => () => void;
   runs: RunsByFile;
+  online: PresenceUser[];
 }
 
 const RealtimeContext = createContext<RealtimeValue | null>(null);
@@ -83,8 +85,10 @@ function runsReducer(state: RunsByFile, event: RealtimeEvent): RunsByFile {
 export function RealtimeProvider({ projectId, children }: { projectId: string; children: ReactNode }) {
   const handlers = useRef(new Set<Handler>());
   const [runs, dispatchRun] = useReducer(runsReducer, {});
+  const [online, setOnline] = useState<PresenceUser[]>([]);
 
   const onEvent = useCallback((event: RealtimeEvent) => {
+    if (event.type === "presence.updated") setOnline(event.users);
     dispatchRun(event);
     handlers.current.forEach((handler) => handler(event));
   }, []);
@@ -98,7 +102,10 @@ export function RealtimeProvider({ projectId, children }: { projectId: string; c
     };
   }, []);
 
-  const value = useMemo(() => ({ status, subscribe, runs }), [status, subscribe, runs]);
+  const value = useMemo(
+    () => ({ status, subscribe, runs, online }),
+    [status, subscribe, runs, online],
+  );
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }
 
@@ -121,4 +128,8 @@ export function useRealtimeEvents(handler: Handler) {
 
 export function useRun(fileId: string): RunState | undefined {
   return useRealtime().runs[fileId];
+}
+
+export function useOnlineUsers() {
+  return useRealtime().online;
 }

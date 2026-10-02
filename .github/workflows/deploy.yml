@@ -1,0 +1,50 @@
+name: Deploy
+
+# Manual: builds the web app into S3/CloudFront and redeploys the services on
+# the EC2 host (ADR-004). Needs the repository secrets listed in docs/deploy-aws.md.
+on:
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build web
+        run: pnpm --filter @collab/web build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_COLLAB_URL: ${{ secrets.VITE_COLLAB_URL }}
+      - name: Upload to S3
+        run: aws s3 sync apps/web/dist s3://${{ secrets.S3_BUCKET }} --delete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
+  services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/collab-code-platform
+            ./infra/deploy.sh

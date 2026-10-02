@@ -20,16 +20,17 @@
 
 ```
 ├── apps/
-│   ├── web/        React SPA (Vite, Monaco, Yjs), invite-ссылки, гостевой вход
+│   ├── web/        React SPA (Vite, Monaco, Yjs, react-konva), PWA, invite-ссылки, гостевой вход
 │   ├── api/        Fastify REST + Swagger + auth + проекты + файлы
 │   ├── collab/     Hocuspocus, синхронизация Yjs, права доступа
 │   └── runner/     Воркер BullMQ, запуск кода в Docker-песочнице
 ├── packages/
 │   ├── shared/     Типы, Zod-схемы, константы
 │   └── db/         Prisma-схема и миграции
-├── bench/          Стенд CRDT vs OT — план
-├── infra/          docker-compose, Caddyfile, скрипты деплоя
-├── docs/           ADR, описание WebSocket-протокола
+├── bench/          Стенд CRDT vs OT: сценарии, результаты, графики
+├── e2e/            Playwright: сквозные тесты в двух браузерах
+├── infra/          Dockerfile, docker-compose, Caddyfile, скрипты деплоя
+├── docs/           ADR, WebSocket-протокол, деплой, текст диплома (thesis/)
 └── .github/workflows/
 ```
 
@@ -63,6 +64,18 @@ pnpm dev:web      # фронтенд, http://localhost:5173
 
 - `pnpm lint` / `pnpm typecheck` / `pnpm test` — по всем пакетам
 - `pnpm db:generate` / `pnpm db:migrate` — Prisma
+- `pnpm --filter @collab/e2e e2e` — сквозные тесты (нужны Postgres, Redis и
+  Chrome; с `E2E_RUNNER=1` и запущенным runner — ещё и запуск кода)
+- `pnpm --filter @collab/bench bench` — исследовательский стенд CRDT vs OT
+  (результаты — `bench/results/REPORT.md`, разбор — `docs/thesis/04-research.md`)
+
+## Документация
+
+- [docs/adr](docs/adr) — архитектурные решения (ADR-001…004)
+- [docs/websocket-protocol.md](docs/websocket-protocol.md) — протоколы реального времени
+- Swagger — `http://localhost:3001/docs` при запущенном api
+- [docs/deploy-aws.md](docs/deploy-aws.md) — деплой на AWS (не проверен на реальном аккаунте)
+- [docs/thesis](docs/thesis) — черновики глав диплома
 
 ## Стек
 

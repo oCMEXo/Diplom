@@ -1,4 +1,5 @@
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AuthResponse, LoginInput, RegisterInput } from "@collab/shared";
 import { api } from "./api";
 import { tokenStore, type StoredUser } from "./tokenStore";
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = useSyncExternalStore(tokenStore.subscribe, tokenStore.get);
+  const queryClient = useQueryClient();
 
   async function login(input: LoginInput) {
     const result = await api.post<AuthResponse>("/auth/login", input);
@@ -38,6 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.post("/auth/logout", { refreshToken: current.tokens.refreshToken }).catch(() => {});
     }
     tokenStore.clear();
+    // Never leave one user's cached projects behind for the next person on this device.
+    queryClient.clear();
+    localStorage.removeItem("collab.query-cache");
   }
 
   return (
