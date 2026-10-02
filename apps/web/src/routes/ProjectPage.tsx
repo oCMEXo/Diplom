@@ -6,6 +6,7 @@ import { FileTree } from "../components/FileTree";
 import { MembersPanel } from "../components/MembersPanel";
 import { InviteLinkPanel } from "../components/InviteLinkPanel";
 import { ChatPanel } from "../components/ChatPanel";
+import { RealtimeProvider } from "../lib/RealtimeContext";
 
 export function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -40,41 +41,43 @@ export function ProjectPage() {
   const canEdit = project.myRole === "owner" || project.myRole === "editor";
 
   return (
-    <div className="flex h-screen">
-      <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center justify-between border-b border-slate-200 p-3">
-          <Link to="/" className="text-xs text-slate-400 hover:text-slate-600">
-            ← проекты
-          </Link>
-        </div>
-        <div className="border-b border-slate-200 p-3">
-          <h1 className="truncate text-sm font-semibold text-slate-900">{project.name}</h1>
-          <span className="text-xs uppercase text-slate-400">{project.myRole}</span>
-        </div>
-        <div className="min-h-0 flex-1">
-          <FileTree
+    <RealtimeProvider key={project.id} projectId={project.id}>
+      <div className="flex h-screen">
+        <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 p-3">
+            <Link to="/" className="text-xs text-slate-400 hover:text-slate-600">
+              ← проекты
+            </Link>
+          </div>
+          <div className="border-b border-slate-200 p-3">
+            <h1 className="truncate text-sm font-semibold text-slate-900">{project.name}</h1>
+            <span className="text-xs uppercase text-slate-400">{project.myRole}</span>
+          </div>
+          <div className="min-h-0 flex-1">
+            <FileTree
+              projectId={project.id}
+              files={files}
+              canEdit={canEdit}
+              onCreate={(path, type) => createFile.mutate({ path, type })}
+            />
+          </div>
+          <InviteLinkPanel
             projectId={project.id}
-            files={files}
-            canEdit={canEdit}
-            onCreate={(path, type) => createFile.mutate({ path, type })}
+            inviteCode={project.inviteCode}
+            inviteRole={project.inviteRole}
+            isOwner={project.myRole === "owner"}
           />
-        </div>
-        <InviteLinkPanel
-          projectId={project.id}
-          inviteCode={project.inviteCode}
-          inviteRole={project.inviteRole}
-          isOwner={project.myRole === "owner"}
-        />
-        <MembersPanel projectId={project.id} members={project.members} isOwner={project.myRole === "owner"} />
-      </aside>
+          <MembersPanel projectId={project.id} members={project.members} isOwner={project.myRole === "owner"} />
+        </aside>
 
-      <main className="min-w-0 flex-1">
-        <Outlet context={{ files, canEdit }} />
-      </main>
+        <main className="min-w-0 flex-1">
+          <Outlet context={{ files, canEdit }} />
+        </main>
 
-      <aside className="w-72 shrink-0 border-l border-slate-200 bg-white">
-        <ChatPanel key={project.id} projectId={project.id} />
-      </aside>
-    </div>
+        <aside className="w-72 shrink-0 border-l border-slate-200 bg-white">
+          <ChatPanel key={project.id} projectId={project.id} />
+        </aside>
+      </div>
+    </RealtimeProvider>
   );
 }

@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@collab/db";
+import { inferLanguage } from "@collab/shared";
 import type { CreateFileInput, UpdateFileInput } from "@collab/shared";
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
@@ -41,7 +42,7 @@ export async function createFile(userId: string, projectId: string, input: Creat
         projectId,
         path: input.path,
         type: input.type,
-        language: input.language ?? null,
+        language: input.language ?? inferLanguage(input.path),
       },
     });
     return toFileDto(file);

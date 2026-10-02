@@ -27,8 +27,3 @@ export const listMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(MESSAGE_PAGE_SIZE),
 });
 export type ListMessagesQuery = z.infer<typeof listMessagesQuerySchema>;
-
-export const realtimeEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("message.created"), message: messageSchema }),
-]);
-export type RealtimeEvent = z.infer<typeof realtimeEventSchema>;

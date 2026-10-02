@@ -84,3 +84,24 @@ ws://<api-host>:3001/ws?projectId=<uuid>&token=<access JWT>
 переподключения клиент заново запрашивает последнюю страницу, чтобы
 подобрать пропущенное. Рассылка пока in-memory в одном процессе api; при
 горизонтальном масштабировании её нужно будет вынести в Redis pub/sub.
+
+### События запуска кода
+
+Те же JSON-кадры, тип которых начинается с `run.`; их публикует runner в
+Redis, api пересылает всем участникам проекта:
+
+```json
+{ "type": "run.started",  "runId": "…", "projectId": "…", "fileId": "…",
+  "language": "python", "startedBy": { "id": "…", "name": "Аня" } }
+{ "type": "run.output",   "runId": "…", "projectId": "…", "fileId": "…",
+  "stream": "stdout", "chunk": "шаг 0\n" }
+{ "type": "run.finished", "runId": "…", "projectId": "…", "fileId": "…",
+  "status": "error", "exitCode": 1, "durationMs": 2400,
+  "errorLine": 5, "truncated": false }
+```
+
+`status` — `ok`, `error`, `timeout` или `failed` (не удалось запустить
+контейнер). `errorLine` — номер строки ошибки из трассировки (для `error`),
+по нему клиент подсвечивает строку в редакторе. Запуск инициируется
+`POST /projects/:projectId/files/:fileId/run` с телом `{ "code": "…" }` и
+ответом `202 { "runId": "…" }`.

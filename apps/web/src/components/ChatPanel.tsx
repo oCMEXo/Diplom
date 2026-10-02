@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEve
 import { MESSAGE_PAGE_SIZE, type Message } from "@collab/shared";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { useProjectEvents } from "../lib/realtime";
+import { useRealtimeEvents, useRealtimeStatus } from "../lib/RealtimeContext";
 
 function mergeById(existing: Message[], incoming: Message[]) {
   const byId = new Map(existing.map((m) => [m.id, m]));
@@ -37,8 +37,9 @@ export function ChatPanel({ projectId }: { projectId: string }) {
     }
   }, [projectId]);
 
-  const status = useProjectEvents(projectId, (event) => {
-    if (event.type === "message.created") {
+  const status = useRealtimeStatus();
+  useRealtimeEvents((event) => {
+    if (event.type === "message.created" && event.message.projectId === projectId) {
       setMessages((prev) => mergeById(prev, [event.message]));
     }
   });

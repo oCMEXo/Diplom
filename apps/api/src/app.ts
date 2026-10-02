@@ -17,6 +17,8 @@ import { inviteRoutes } from "./modules/projects/invite.routes.js";
 import { filesRoutes } from "./modules/files/files.routes.js";
 import { messagesRoutes } from "./modules/messages/messages.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
+import { runsRoutes } from "./modules/runs/runs.routes.js";
+import { closeRunQueue } from "./lib/queue.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -35,7 +37,7 @@ export async function buildApp() {
     return reply.code(500).send({ message: "Internal Server Error" });
   });
 
-  await app.register(cors, { origin: env.CORS_ORIGIN, credentials: true });
+  await app.register(cors, { origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()), credentials: true });
   await app.register(websocket);
   await app.register(authenticatePlugin);
 
@@ -59,7 +61,10 @@ export async function buildApp() {
   await app.register(filesRoutes, { prefix: "/projects" });
   await app.register(inviteRoutes);
   await app.register(messagesRoutes, { prefix: "/projects" });
+  await app.register(runsRoutes, { prefix: "/projects" });
   await app.register(realtimeRoutes);
+
+  app.addHook("onClose", closeRunQueue);
 
   return app;
 }
