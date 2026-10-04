@@ -23,33 +23,70 @@ describe("buildDockerArgs", () => {
     expect(joined).toContain("--pids-limit 64");
   });
 
-  it("reads the program from stdin so no user data touches the filesystem", () => {
-    expect(args.slice(-3)).toEqual(["python:3.12-alpine", "python", "-"]);
+  it("unpacks the project from stdin into a tmpfs and runs the entry file from there", () => {
+    const image = args.indexOf("python:3.12-alpine");
+    expect(args.slice(image, image + 3)).toEqual(["python:3.12-alpine", "sh", "-c"]);
+    expect(args[image + 3]).toContain("tar -xf - -C /tmp/p");
+    expect(args[image + 3]).toContain('exec python "./$ENTRY"');
+    expect(joined).toContain("--tmpfs /tmp:rw,size=16m");
+  });
+
+  it("passes the entry file through the environment, not the shell script", () => {
+    const tricky = buildDockerArgs("javascript", "x", 'a"; rm -rf /; echo "b.js');
+    expect(tricky).toContain('ENTRY=a"; rm -rf /; echo "b.js');
+    expect(tricky.at(-1)).not.toContain("rm -rf");
   });
 
   it("picks the node image for javascript", () => {
-    expect(buildDockerArgs("javascript", "x").slice(-3)).toEqual(["node:22-alpine", "node", "-"]);
+    const node = buildDockerArgs("javascript", "x");
+    expect(node).toContain("node:22-alpine");
+    expect(node.at(-1)).toContain('exec node "./$ENTRY"');
+    expect(node).toContain("ENTRY=main.js");
   });
 });
 
 describe("parseErrorLine", () => {
   it("reads the failing line from a node stack trace", () => {
-    const stderr = `[stdin]:12\nthrow new Error("boom");\n^\n\nError: boom\n    at [stdin]:12:7\n    at Script.runInThisContext`;
+    const stderr = [
+      "/tmp/p/main.js:12",
+      'throw new Error("boom");',
+      "^",
+      "",
+      "Error: boom",
+      "    at Object.<anonymous> (/tmp/p/main.js:12:7)",
+      "    at node:internal/modules",
+    ].join("\n");
     expect(parseErrorLine("javascript", stderr)).toBe(12);
+    expect(parseErrorLine("javascript", stderr, "scripts/run.js")).toBeNull();
   });
 
-  it("uses the innermost frame of a python traceback", () => {
+  it("uses the innermost frame of a python traceback that belongs to the entry file", () => {
     const stderr = [
       "Traceback (most recent call last):",
-      '  File "<stdin>", line 9, in <module>',
-      '  File "<stdin>", line 4, in divide',
+      '  File "/tmp/p/main.py", line 9, in <module>',
+      '  File "/tmp/p/main.py", line 4, in divide',
+      '  File "/tmp/p/helper.py", line 2, in inner',
       "ZeroDivisionError: division by zero",
     ].join("\n");
     expect(parseErrorLine("python", stderr)).toBe(4);
   });
 
+  it("accepts the ./ that python keeps in the script path", () => {
+    expect(parseErrorLine("python", '  File "/tmp/p/./main.py", line 5, in <module>')).toBe(5);
+  });
+
   it("reads python syntax errors", () => {
-    expect(parseErrorLine("python", '  File "<stdin>", line 3\n    print(\n         ^\nSyntaxError')).toBe(3);
+    expect(parseErrorLine("python", '  File "/tmp/p/main.py", line 3\n    print(\n         ^\nSyntaxError')).toBe(3);
+  });
+
+  it("only reports lines of the file being run, also when it sits in a folder", () => {
+    const stderr = [
+      "Traceback (most recent call last):",
+      '  File "/tmp/p/app/run.py", line 7, in <module>',
+      '  File "/tmp/p/app/util.py", line 3, in helper',
+      "ValueError: bad",
+    ].join("\n");
+    expect(parseErrorLine("python", stderr, "app/run.py")).toBe(7);
   });
 
   it("returns null when there is no location", () => {

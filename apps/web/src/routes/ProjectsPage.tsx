@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Link as LinkIcon, Plus } from "lucide-react";
+import { ArrowRight, LogOut, Link as LinkIcon, Plus, Trash2 } from "lucide-react";
 import type { Project } from "@collab/shared";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { gradientFor, initials } from "../lib/colors";
 import { CreateProjectDialog } from "../components/CreateProjectDialog";
+import { RemoveProjectDialog } from "../components/RemoveProjectDialog";
 import { UserMenu } from "../components/layout/UserMenu";
 import { Button } from "../components/ui/Button";
 import { Wordmark } from "../components/ui/Logo";
@@ -24,6 +25,7 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const [link, setLink] = useState("");
+  const [removing, setRemoving] = useState<Project | null>(null);
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
@@ -87,7 +89,7 @@ export function ProjectsPage() {
         {projects && (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
-              <li key={project.id}>
+              <li key={project.id} className="group/card relative">
                 <Link
                   to={`/projects/${project.id}`}
                   className="group flex h-full flex-col gap-4 rounded-2xl bg-surface p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-glow"
@@ -109,6 +111,14 @@ export function ProjectsPage() {
                     <ArrowRight size={16} className="text-faint transition group-hover:translate-x-1 group-hover:text-accent" />
                   </div>
                 </Link>
+                <button
+                  onClick={() => setRemoving(project)}
+                  aria-label={project.myRole === "owner" ? `Удалить проект ${project.name}` : `Покинуть проект ${project.name}`}
+                  title={project.myRole === "owner" ? "Удалить проект" : "Покинуть проект"}
+                  className="absolute right-3 top-3 rounded-lg p-1.5 text-faint opacity-0 transition hover:bg-bad/15 hover:text-bad focus-visible:opacity-100 group-hover/card:opacity-100"
+                >
+                  {project.myRole === "owner" ? <Trash2 size={16} /> : <LogOut size={16} />}
+                </button>
               </li>
             ))}
             <li>
@@ -130,6 +140,7 @@ export function ProjectsPage() {
         )}
       </main>
 
+      {removing && <RemoveProjectDialog project={removing} onClose={() => setRemoving(null)} />}
       {creating && (
         <CreateProjectDialog onClose={() => setCreating(false)} onCreated={(project) => navigate(`/projects/${project.id}`)} />
       )}

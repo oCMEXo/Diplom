@@ -39,7 +39,7 @@
 <line class="m" x1="750.0" y1="322.0" x2="531.0" y2="322.0"/>
 <text class="mt" x="640.0" y="315.0">run.started</text>
 <line class="m" x1="750.0" y1="366.0" x2="969.0" y2="366.0"/>
-<text class="mt" x="860.0" y="359.0">docker run (код через stdin)</text>
+<text class="mt" x="860.0" y="359.0">docker run (проект через stdin)</text>
 <line class="r" x1="970.0" y1="410.0" x2="751.0" y2="410.0"/>
 <text class="mt" x="860.0" y="403.0">stdout / stderr</text>
 <line class="m" x1="750.0" y1="454.0" x2="531.0" y2="454.0"/>

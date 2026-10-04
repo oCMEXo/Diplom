@@ -24,3 +24,18 @@ export const pushResultSchema = z.object({
   unchanged: z.number().int(),
 });
 export type PushResult = z.infer<typeof pushResultSchema>;
+
+export const githubBranchesSchema = z.object({
+  token: pushGithubSchema.shape.token,
+  repoUrl: z.string().trim().max(300).optional(),
+});
+export type GithubBranchesInput = z.infer<typeof githubBranchesSchema>;
+
+export const githubBranchesResultSchema = z.object({
+  repo: z.object({ owner: z.string(), name: z.string() }),
+  /** The branch pushes go to by default: the project's linked branch, else the repository default. */
+  defaultBranch: z.string(),
+  branches: z.array(z.string()),
+  canPush: z.boolean(),
+});
+export type GithubBranchesResult = z.infer<typeof githubBranchesResultSchema>;

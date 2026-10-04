@@ -1,10 +1,36 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { errorResponseSchema, pushGithubSchema, pushResultSchema } from "@collab/shared";
-import { pushToGithub } from "./github.service.js";
+import {
+  errorResponseSchema,
+  githubBranchesResultSchema,
+  githubBranchesSchema,
+  pushGithubSchema,
+  pushResultSchema,
+} from "@collab/shared";
+import { listBranches, pushToGithub } from "./github.service.js";
 
 export const githubRoutes: FastifyPluginAsyncZod = async (app) => {
   app.addHook("preHandler", app.authenticate);
+
+  app.post(
+    "/:projectId/github/branches",
+    {
+      schema: {
+        tags: ["github"],
+        params: z.object({ projectId: z.string().uuid() }),
+        body: githubBranchesSchema,
+        response: {
+          200: githubBranchesResultSchema,
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+          502: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => listBranches(request.userId, request.params.projectId, request.body),
+  );
 
   app.post(
     "/:projectId/github/push",

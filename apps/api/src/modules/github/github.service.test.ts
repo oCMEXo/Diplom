@@ -4,7 +4,7 @@ import { prisma } from "@collab/db";
 import { gitBlobSha } from "../../lib/git-blob.js";
 import { textToYjsState } from "../../lib/yjs-text.js";
 import { createProject, inviteMember } from "../projects/projects.service.js";
-import { pushToGithub } from "./github.service.js";
+import { listBranches, pushToGithub } from "./github.service.js";
 
 const TOKEN = "ghp_test_token_123456";
 
@@ -55,6 +55,7 @@ function fakeGithub(initial: Record<string, string>, options: { canPush?: boolea
     const path = url.pathname.replace("/repos/octocat/demo", "");
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
 
+    if (path === "/branches") return json([...branches.keys()].map((name) => ({ name })));
     if (path === "") return json({ default_branch: defaultBranch, permissions: { push: options.canPush ?? true } });
 
     const ref = path.match(/^\/git\/ref\/heads\/(.+)$/);
@@ -306,5 +307,34 @@ describe("pushToGithub", () => {
         pushToGithub(owner.id, project.id, { ...input, branch }, fakeGithub({ "a.txt": "one" }).fetchImpl),
       ).rejects.toMatchObject({ statusCode: 400 });
     }
+  });
+
+  it("lists the branches with the default one first, ready for a picker", async () => {
+    const owner = await user();
+    const github = fakeGithub({ "a.txt": "one" });
+    github.branches.set("dev", "c0");
+    github.branches.set("alpha", "c0");
+    const project = await linkedProject(owner.id, { "a.txt": "one" });
+
+    const result = await listBranches(owner.id, project.id, { token: TOKEN }, github.fetchImpl);
+
+    expect(result).toMatchObject({ defaultBranch: "main", canPush: true, repo: { owner: "octocat", name: "demo" } });
+    expect(result.branches).toEqual(["main", "dev", "alpha"]);
+  });
+
+  it("needs the repository link for an unlinked project and a valid token for the list", async () => {
+    const owner = await user();
+    const project = await linkedProject(owner.id, { "a.txt": "one" }, false);
+    const github = fakeGithub({ "a.txt": "one" });
+
+    await expect(listBranches(owner.id, project.id, { token: TOKEN }, github.fetchImpl)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    await expect(
+      listBranches(owner.id, project.id, { token: TOKEN, repoUrl: "octocat/demo" }, github.fetchImpl),
+    ).resolves.toMatchObject({ branches: ["main"] });
+    await expect(
+      listBranches(owner.id, project.id, { token: "wrong_token_value", repoUrl: "octocat/demo" }, github.fetchImpl),
+    ).rejects.toMatchObject({ statusCode: 400 });
   });
 });

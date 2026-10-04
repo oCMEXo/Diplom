@@ -16,11 +16,16 @@ function dockerReady() {
 
 const suite = dockerReady() ? describe : describe.skip;
 
-async function run(language: "javascript" | "python", code: string, timeoutMs?: number) {
+async function run(
+  language: "javascript" | "python",
+  code: string,
+  timeoutMs?: number,
+  project: { entry?: string; files?: { path: string; content: string }[] } = {},
+) {
   const out: string[] = [];
   const err: string[] = [];
   const result = await runInSandbox(
-    { runId: randomUUID(), language, code },
+    { runId: randomUUID(), language, code, ...project },
     (stream, chunk) => (stream === "stdout" ? out : err).push(chunk),
     timeoutMs,
   );
@@ -49,6 +54,55 @@ suite("runInSandbox (real docker)", () => {
   it("reports the error line of a javascript exception", async () => {
     const { result } = await run("javascript", "const a = 1;\n\nthrow new Error('boom');\n");
     expect(result).toMatchObject({ status: "error", errorLine: 3 });
+  });
+
+  it("lets a script require other files of the project", async () => {
+    const { result, stdout, stderr } = await run("javascript", "const log = require('./logger');\nlog('hello');", undefined, {
+      entry: "main.js",
+      files: [{ path: "logger.js", content: "module.exports = (text) => console.log('[log] ' + text);" }],
+    });
+    expect(stderr).toBe("");
+    expect(result.status).toBe("ok");
+    expect(stdout).toBe("[log] hello\n");
+  });
+
+  it("resolves imports relative to a file inside a folder", async () => {
+    const { stdout } = await run("javascript", "console.log(require('../lib/math').double(21));", undefined, {
+      entry: "scripts/run.js",
+      files: [{ path: "lib/math.js", content: "exports.double = (n) => n * 2;" }],
+    });
+    expect(stdout.trim()).toBe("42");
+  });
+
+  it("lets python import a sibling module, with a Cyrillic file name for the entry", async () => {
+    const { result, stdout } = await run("python", "import helper\nprint(helper.greet('мир'))", undefined, {
+      entry: "запуск.py",
+      files: [{ path: "helper.py", content: "def greet(name):\n    return 'привет, ' + name" }],
+    });
+    expect(result.status).toBe("ok");
+    expect(stdout.trim()).toBe("привет, мир");
+  });
+
+  it("reports the failing line in the entry file when the error comes from an imported one", async () => {
+    const { result, stderr } = await run("python", "import helper\n\nhelper.boom()\n", undefined, {
+      entry: "main.py",
+      files: [{ path: "helper.py", content: "def boom():\n    raise ValueError('x')" }],
+    });
+    expect(stderr).toContain("ValueError");
+    expect(result).toMatchObject({ status: "error", errorLine: 3 });
+  });
+
+  it("reports the failing line of a javascript entry inside a folder", async () => {
+    const { result } = await run("javascript", "const a = 1;\nthrow new Error('boom');\n", undefined, {
+      entry: "scripts/run.js",
+    });
+    expect(result).toMatchObject({ status: "error", errorLine: 2 });
+  });
+
+  it("does not run file names as shell code", async () => {
+    const { result, stdout } = await run("python", "print('ok')", undefined, { entry: 'we"ird $(echo hacked).py' });
+    expect(result.status).toBe("ok");
+    expect(stdout).toBe("ok\n");
   });
 
   it("kills runaway code at the timeout", async () => {

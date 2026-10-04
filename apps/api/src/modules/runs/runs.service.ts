@@ -1,10 +1,36 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@collab/db";
-import { inferLanguage, toRunnableLanguage } from "@collab/shared";
+import { MAX_RUN_FILES, MAX_RUN_FILES_BYTES, inferLanguage, toRunnableLanguage } from "@collab/shared";
 import type { RunJob } from "@collab/shared";
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
 import { enqueueRun } from "../../lib/queue.js";
+import { yjsStateToText } from "../../lib/yjs-text.js";
+
+/**
+ * The rest of the project's text files, so the program can import its neighbours. Shallow files come
+ * first when the limits cut the list; installed dependencies are never sent.
+ */
+async function siblingFiles(projectId: string, entryId: string) {
+  const rows = await prisma.file.findMany({
+    where: { projectId, id: { not: entryId }, type: { not: "board" } },
+    select: { path: true, yjsState: true },
+  });
+  const candidates = rows
+    .filter((row) => !row.path.split("/").includes("node_modules"))
+    .sort((a, b) => a.path.split("/").length - b.path.split("/").length || a.path.localeCompare(b.path));
+
+  const files: { path: string; content: string }[] = [];
+  let bytes = 0;
+  for (const row of candidates) {
+    const content = yjsStateToText(row.yjsState);
+    const size = Buffer.byteLength(content);
+    if (files.length >= MAX_RUN_FILES || bytes + size > MAX_RUN_FILES_BYTES) continue;
+    files.push({ path: row.path, content });
+    bytes += size;
+  }
+  return files;
+}
 
 export async function requestRun(
   userId: string,
@@ -40,6 +66,8 @@ export async function requestRun(
     fileId,
     language,
     code,
+    entry: file.path,
+    files: await siblingFiles(projectId, fileId),
     startedBy: { id: user.id, name: user.name },
   });
 

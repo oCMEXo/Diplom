@@ -1,11 +1,11 @@
 import { prisma } from "@collab/db";
-import * as Y from "yjs";
-import type { PushGithubInput, PushResult } from "@collab/shared";
+import type { GithubBranchesInput, GithubBranchesResult, PushGithubInput, PushResult } from "@collab/shared";
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
 import { gitBlobSha } from "../../lib/git-blob.js";
 import { GithubApi } from "../../lib/github-api.js";
 import { parseGithubUrl } from "../../lib/github.js";
+import { yjsStateToText } from "../../lib/yjs-text.js";
 
 const BRANCH = /^(?!-)[A-Za-z0-9._/-]{1,200}$/;
 
@@ -21,20 +21,50 @@ interface TreeInfo {
   tree: { path: string; mode: string; type: string; sha: string }[];
 }
 
-function stateToText(state: Uint8Array | null): string {
-  if (!state) return "";
-  const doc = new Y.Doc();
-  Y.applyUpdate(doc, state);
-  const text = doc.getText("monaco").toString();
-  doc.destroy();
-  return text;
-}
-
 function validBranch(name: string) {
   return BRANCH.test(name) && !name.includes("..") && !name.endsWith("/") && !name.endsWith(".lock");
 }
 
 const encodeRef = (name: string) => name.split("/").map(encodeURIComponent).join("/");
+
+/** The repository a project pushes to: its saved link, or the one given in the request. */
+function resolveRepo(
+  project: { githubOwner: string | null; githubRepo: string | null; githubBranch: string | null },
+  repoUrl?: string,
+) {
+  if (project.githubOwner && project.githubRepo) {
+    return { owner: project.githubOwner, repo: project.githubRepo, linkedBranch: project.githubBranch, needsLink: false };
+  }
+  const parsed = repoUrl ? parseGithubUrl(repoUrl) : null;
+  if (!parsed) throw new AppError("Проект не связан с репозиторием GitHub: укажите ссылку на него.", 400);
+  return { owner: parsed.owner, repo: parsed.repo, linkedBranch: parsed.ref, needsLink: true };
+}
+
+/** Branches of the project's repository, so the push dialog can offer a list instead of a text box. */
+export async function listBranches(
+  userId: string,
+  projectId: string,
+  input: GithubBranchesInput,
+  fetchImpl: typeof fetch = fetch,
+): Promise<GithubBranchesResult> {
+  await requireProjectRole(projectId, userId, "editor");
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+  const { owner, repo, linkedBranch } = resolveRepo(project, input.repoUrl);
+  const slug = `${owner}/${repo}`;
+  const api = new GithubApi(input.token, fetchImpl);
+
+  const info = await api.get<RepoInfo>(`/repos/${slug}`);
+  const found = await api.get<{ name: string }[]>(`/repos/${slug}/branches?per_page=100`);
+  const defaultBranch = linkedBranch ?? info.default_branch;
+  const names = found.map((branch) => branch.name).filter((name) => name !== defaultBranch);
+
+  return {
+    repo: { owner, name: repo },
+    defaultBranch,
+    branches: [defaultBranch, ...names],
+    canPush: info.permissions?.push ?? true,
+  };
+}
 
 /**
  * Commits the project's changed text files to the linked GitHub repository.
@@ -54,18 +84,7 @@ export async function pushToGithub(
   await requireProjectRole(projectId, userId, "editor");
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
 
-  let owner = project.githubOwner;
-  let repo = project.githubRepo;
-  let linkedBranch = project.githubBranch;
-  const needsLink = !owner || !repo;
-  if (needsLink) {
-    const parsed = input.repoUrl ? parseGithubUrl(input.repoUrl) : null;
-    if (!parsed) {
-      throw new AppError("Проект не связан с репозиторием GitHub: укажите ссылку на него.", 400);
-    }
-    ({ owner, repo } = parsed);
-    linkedBranch = parsed.ref;
-  }
+  const { owner, repo, linkedBranch, needsLink } = resolveRepo(project, input.repoUrl);
   const slug = `${owner}/${repo}`;
   const api = new GithubApi(input.token, fetchImpl);
 
@@ -100,7 +119,7 @@ export async function pushToGithub(
   let untouched = 0;
 
   for (const file of files) {
-    const content = stateToText(file.yjsState ? new Uint8Array(file.yjsState) : null);
+    const content = yjsStateToText(file.yjsState);
     const sha = gitBlobSha(content);
     const existing = remote.get(file.path);
 

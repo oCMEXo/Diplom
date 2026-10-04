@@ -144,7 +144,8 @@ test("a file can be created from the sidebar and the theme choice is remembered"
   const project = await createProject(request, owner, "Интерфейс");
   const page = await openAs(browser, owner, `/projects/${project.id}`);
 
-  await page.getByRole("button", { name: "Создать: документ" }).click();
+  await page.getByRole("button", { name: "Создать файл" }).click();
+  await page.getByRole("radio", { name: "Документ" }).click();
   await page.getByLabel("Имя файла").fill("заметки.md");
   await page.getByRole("button", { name: "Создать", exact: true }).click();
   await expect(page.getByRole("link", { name: "заметки.md" })).toBeVisible();
@@ -194,7 +195,7 @@ test("a file can be deleted from the sidebar after confirmation", async ({ brows
   await expect(file).toHaveCount(0);
 });
 
-test("pushing to GitHub with a wrong token explains what went wrong", async ({ browser, request }) => {
+test("a wrong GitHub token is explained before anything is sent", async ({ browser, request }) => {
   const github = await request.get("https://api.github.com/zen").catch(() => null);
   test.skip(!github?.ok(), "needs network access to GitHub");
 
@@ -208,6 +209,63 @@ test("pushing to GitHub with a wrong token explains what went wrong", async ({ b
 
   await page.getByRole("button", { name: "Отправить в GitHub" }).click();
   await page.getByLabel("Токен GitHub").fill("ghp_definitely_not_a_real_token_0000");
-  await page.getByRole("dialog").getByRole("button", { name: "Отправить", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("GitHub не принял токен", { timeout: 20_000 });
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("GitHub не принял токен")).toBeVisible({ timeout: 20_000 });
+  await expect(dialog.getByRole("button", { name: "Отправить", exact: true })).toBeDisabled();
+});
+
+test("files are shown in folders that can be folded", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Папки");
+  await createFile(request, owner, project.id, "package.json");
+  await createFile(request, owner, project.id, "contracts/Lock.sol");
+  await createFile(request, owner, project.id, "logs/2025/run.log");
+  const page = await openAs(browser, owner, `/projects/${project.id}`);
+
+  await expect(page.getByRole("button", { name: "contracts", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Lock.sol" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "run.log" })).toBeVisible();
+
+  await page.getByRole("button", { name: "contracts", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Lock.sol" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "package.json" })).toBeVisible();
+});
+
+test("a project can be deleted by its owner and left by a guest", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Старый проект");
+  const visitor = await guest(request, "Влад");
+  await join(request, visitor, project.inviteCode);
+
+  const guestPage = await openAs(browser, visitor, "/");
+  await expect(guestPage.getByText("Старый проект")).toBeVisible();
+  await guestPage.getByText("Старый проект").hover();
+  await guestPage.getByRole("button", { name: "Покинуть проект Старый проект" }).click();
+  await guestPage.getByRole("button", { name: "Покинуть", exact: true }).click();
+  await expect(guestPage.getByText("Старый проект")).toHaveCount(0);
+
+  const ownerPage = await openAs(browser, owner, "/");
+  await ownerPage.getByText("Старый проект").hover();
+  await ownerPage.getByRole("button", { name: "Удалить проект Старый проект" }).click();
+  await ownerPage.getByRole("button", { name: "Удалить навсегда" }).click();
+  await expect(ownerPage.getByText("Старый проект")).toHaveCount(0);
+});
+
+test("code run can import other files of the project", async ({ browser, request }) => {
+  test.skip(process.env.E2E_RUNNER !== "1", "needs the runner service and Docker");
+
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Модули");
+  const helper = await createFile(request, owner, project.id, "logger.js");
+  const main = await createFile(request, owner, project.id, "main.js");
+
+  const helperPage = await openAs(browser, owner, `/projects/${project.id}/files/${helper.id}`);
+  await typeInEditor(helperPage, "module.exports = (text) => console.log('[log] ' + text);");
+  await expect(helperPage.getByText("Синхронизировано")).toBeVisible();
+  await helperPage.waitForTimeout(3500);
+
+  const page = await openAs(browser, owner, `/projects/${project.id}/files/${main.id}`);
+  await typeInEditor(page, "require('./logger')('привет');");
+  await page.getByRole("button", { name: "Запустить" }).click();
+  await expect(page.locator("pre")).toContainText("[log] привет", { timeout: 40_000 });
 });

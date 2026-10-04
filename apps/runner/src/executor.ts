@@ -2,7 +2,8 @@ import { spawn } from "node:child_process";
 import { StringDecoder } from "node:string_decoder";
 import { MAX_RUN_OUTPUT_BYTES, RUN_TIMEOUT_MS } from "@collab/shared";
 import type { RunJob, RunStatus } from "@collab/shared";
-import { buildDockerArgs, containerName, parseErrorLine } from "./sandbox.js";
+import { buildDockerArgs, containerName, entryFile, parseErrorLine } from "./sandbox.js";
+import { buildTar } from "./tar.js";
 
 export interface ExecutionResult {
   status: RunStatus;
@@ -18,13 +19,13 @@ const DOCKER_ERROR_EXIT = 125;
 const STDERR_SCAN_LIMIT = 16 * 1024;
 
 export function runInSandbox(
-  job: Pick<RunJob, "runId" | "language" | "code">,
+  job: Pick<RunJob, "runId" | "language" | "code"> & Partial<Pick<RunJob, "entry" | "files">>,
   onOutput: OutputHandler,
   timeoutMs = RUN_TIMEOUT_MS,
 ): Promise<ExecutionResult> {
   return new Promise((resolve) => {
     const startedAt = Date.now();
-    const child = spawn("docker", buildDockerArgs(job.language, job.runId), {
+    const child = spawn("docker", buildDockerArgs(job.language, job.runId, job.entry), {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -79,7 +80,7 @@ export function runInSandbox(
         status,
         exitCode,
         durationMs,
-        errorLine: status === "error" ? parseErrorLine(job.language, stderrTail) : null,
+        errorLine: status === "error" ? parseErrorLine(job.language, stderrTail, job.entry) : null,
         truncated,
       });
     }
@@ -91,6 +92,10 @@ export function runInSandbox(
     child.on("close", (code) => finish(code, false));
 
     child.stdin.on("error", () => undefined);
-    child.stdin.end(job.code);
+    // The project is sent as a tar archive on stdin; the entry file is the editor's current text.
+    const entry = entryFile(job.language, job.entry);
+    child.stdin.end(
+      buildTar([...(job.files ?? []).filter((file) => file.path !== entry), { path: entry, content: job.code }]),
+    );
   });
 }

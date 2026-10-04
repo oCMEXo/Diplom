@@ -8,3 +8,13 @@ export function textToYjsState(text: string): Uint8Array {
   doc.destroy();
   return state;
 }
+
+/** The reverse of `textToYjsState`: the text of a stored editor document (empty when never edited). */
+export function yjsStateToText(state: Uint8Array | null): string {
+  if (!state) return "";
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, new Uint8Array(state));
+  const text = doc.getText("monaco").toString();
+  doc.destroy();
+  return text;
+}

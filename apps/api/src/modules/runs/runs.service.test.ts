@@ -4,6 +4,7 @@ import { prisma } from "@collab/db";
 import type { RunJob } from "@collab/shared";
 import { createProject } from "../projects/projects.service.js";
 import { createFile } from "../files/files.service.js";
+import { textToYjsState } from "../../lib/yjs-text.js";
 import { requestRun } from "./runs.service.js";
 
 describe("requestRun", () => {
@@ -48,6 +49,34 @@ describe("requestRun", () => {
       code: "print(1)",
       startedBy: { id: owner.id, name: "Аня" },
     });
+  });
+
+  it("sends the rest of the project along, so the program can import its neighbours", async () => {
+    const owner = await user();
+    const { project, file } = await projectWithFile(owner.id, "scripts/run.js");
+    const add = (path: string, text: string | null, type: "code" | "board" = "code") =>
+      prisma.file.create({
+        data: {
+          projectId: project.id,
+          path,
+          type,
+          yjsState: text === null ? null : Buffer.from(textToYjsState(text)),
+        },
+      });
+    await add("logger.js", "module.exports = () => {};");
+    await add("lib/empty.py", null);
+    await add("ideas.board", "not text", "board");
+    await add("node_modules/pkg/index.js", "ignored");
+
+    const jobs: RunJob[] = [];
+    await requestRun(owner.id, project.id, file.id, "require('../logger')", async (j) => void jobs.push(j));
+
+    expect(jobs[0]?.entry).toBe("scripts/run.js");
+    expect(jobs[0]?.code).toBe("require('../logger')");
+    expect(jobs[0]?.files).toEqual([
+      { path: "logger.js", content: "module.exports = () => {};" },
+      { path: "lib/empty.py", content: "" },
+    ]);
   });
 
   it("runs javascript files too", async () => {

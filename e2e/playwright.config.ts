@@ -6,7 +6,8 @@ const WEB_PORT = 5199;
 
 const database =
   process.env.DATABASE_URL ?? "postgresql://collab:collab@localhost:5433/collab_test?schema=public";
-const redis = process.env.REDIS_URL ?? "redis://localhost:6380";
+// Database 1, so a runner started for development (database 0) never picks up the tests' jobs.
+const redis = process.env.REDIS_URL ?? "redis://localhost:6380/1";
 const secrets = {
   JWT_ACCESS_SECRET: "e2e-access-secret-0123456789",
   JWT_REFRESH_SECRET: "e2e-refresh-secret-0123456789",

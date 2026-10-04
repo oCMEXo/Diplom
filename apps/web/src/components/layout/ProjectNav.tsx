@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import { FileCode2, FileText, GitBranch, GitCommitHorizontal, PenTool, Plus, Trash2, UserPlus, type LucideIcon } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { GitBranch, GitCommitHorizontal, Plus, UserPlus } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -9,18 +9,10 @@ import { useOnlineUsers, useRealtimeStatus } from "../../lib/RealtimeContext";
 import { Button, IconButton } from "../ui/Button";
 import { LogoMark } from "../ui/Logo";
 import { RoleBadge } from "../ui/RoleBadge";
+import { FileTree } from "./FileTree";
 import { UserMenu } from "./UserMenu";
 
-export const FILE_KINDS: Record<FileType, { label: string; plural: string; icon: LucideIcon; tone: string }> = {
-  code: { label: "Код", plural: "Код", icon: FileCode2, tone: "text-[#60a5fa]" },
-  doc: { label: "Документ", plural: "Документы", icon: FileText, tone: "text-[#34d399]" },
-  board: { label: "Доска", plural: "Доски", icon: PenTool, tone: "text-[#f472b6]" },
-};
-
-function splitPath(path: string) {
-  const index = path.lastIndexOf("/");
-  return index === -1 ? { dir: "", name: path } : { dir: path.slice(0, index + 1), name: path.slice(index + 1) };
-}
+export { FILE_KINDS } from "./file-kinds";
 
 function ProjectRail({ activeId, onCreateProject }: { activeId: string; onCreateProject: () => void }) {
   const navigate = useNavigate();
@@ -116,66 +108,27 @@ export function ProjectNav({
           </IconButton>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
-          {(Object.keys(FILE_KINDS) as FileType[]).map((type) => {
-            const kind = FILE_KINDS[type];
-            const items = files.filter((file) => file.type === type);
-            if (items.length === 0 && !canEdit) return null;
-            return (
-              <section key={type}>
-                <div className="group mb-1 flex items-center justify-between px-2">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wider text-faint">{kind.plural}</h2>
-                  {canEdit && (
-                    <button
-                      onClick={() => onCreateFile(type)}
-                      aria-label={`Создать: ${kind.label.toLowerCase()}`}
-                      title={`Создать: ${kind.label.toLowerCase()}`}
-                      className="rounded p-0.5 text-faint transition hover:bg-raised hover:text-fg"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  )}
-                </div>
-                <ul className="space-y-0.5">
-                  {items.map((file) => {
-                    const { dir, name } = splitPath(file.path);
-                    return (
-                      <li key={file.id} className="group/file relative">
-                        <NavLink
-                          to={`/projects/${project.id}/files/${file.id}`}
-                          onClick={onNavigate}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition",
-                              isActive ? "bg-accent/15 text-fg" : "text-muted hover:bg-raised hover:text-fg",
-                            )
-                          }
-                        >
-                          <kind.icon size={16} className={cn("shrink-0", kind.tone)} />
-                          <span className="truncate">
-                            {dir && <span className="text-faint">{dir}</span>}
-                            {name}
-                          </span>
-                        </NavLink>
-                        {canEdit && (
-                          <button
-                            onClick={() => onDeleteFile(file)}
-                            aria-label={`Удалить ${file.path}`}
-                            title="Удалить файл"
-                            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-faint opacity-0 transition hover:bg-bad/15 hover:text-bad focus-visible:opacity-100 group-hover/file:opacity-100"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                  {items.length === 0 && <li className="px-2.5 py-1 text-xs text-faint">Пока ничего нет</li>}
-                </ul>
-              </section>
-            );
-          })}
-          {files.length === 0 && !canEdit && <p className="px-2.5 text-sm text-faint">В проекте пока нет файлов.</p>}
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
+          <div className="mb-1 flex items-center justify-between px-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-faint">Файлы</h2>
+            {canEdit && (
+              <button
+                onClick={() => onCreateFile("code")}
+                aria-label="Создать файл"
+                title="Создать файл"
+                className="rounded p-0.5 text-faint transition hover:bg-raised hover:text-fg"
+              >
+                <Plus size={15} />
+              </button>
+            )}
+          </div>
+          <FileTree
+            projectId={project.id}
+            files={files}
+            canEdit={canEdit}
+            onNavigate={onNavigate}
+            onDeleteFile={onDeleteFile}
+          />
         </div>
 
         <div className="space-y-2 border-t border-line p-3">
