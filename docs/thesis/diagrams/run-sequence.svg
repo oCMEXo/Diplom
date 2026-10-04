@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 702" width="1060" height="702" font-family="Inter, Segoe UI, Arial, sans-serif">
+<style>
+ .p{fill:#eef2ff;stroke:#4f46e5;stroke-width:1.5}
+ .pt{font-size:13.5px;font-weight:700;fill:#0f172a;text-anchor:middle}
+ .ll{stroke:#94a3b8;stroke-width:1.2;stroke-dasharray:5 4}
+ .m{stroke:#334155;stroke-width:1.5;marker-end:url(#a)}
+ .r{stroke:#64748b;stroke-width:1.4;stroke-dasharray:5 3;marker-end:url(#a2)}
+ .mt{font-size:12px;fill:#1e293b;text-anchor:middle}
+ .tt{font-size:15px;font-weight:700;fill:#0f172a}
+ .nt{font-size:12px;fill:#475569}
+ .self{fill:none;stroke:#334155;stroke-width:1.5;marker-end:url(#a)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
+<marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#64748b"/></marker>
+</defs>
+<rect width="1060" height="702" fill="#fff"/>
+<text class="tt" x="20" y="26">Запуск кода и доставка вывода всем участникам</text>
+<rect class="p" x="20.0" y="38" width="140" height="30" rx="8"/><text class="pt" x="90.0" y="58">Клиент</text>
+<line class="ll" x1="90.0" y1="68" x2="90.0" y2="652"/>
+<rect class="p" x="240.0" y="38" width="140" height="30" rx="8"/><text class="pt" x="310.0" y="58">api</text>
+<line class="ll" x1="310.0" y1="68" x2="310.0" y2="652"/>
+<rect class="p" x="460.0" y="38" width="140" height="30" rx="8"/><text class="pt" x="530.0" y="58">Redis</text>
+<line class="ll" x1="530.0" y1="68" x2="530.0" y2="652"/>
+<rect class="p" x="680.0" y="38" width="140" height="30" rx="8"/><text class="pt" x="750.0" y="58">runner</text>
+<line class="ll" x1="750.0" y1="68" x2="750.0" y2="652"/>
+<rect class="p" x="900.0" y="38" width="140" height="30" rx="8"/><text class="pt" x="970.0" y="58">Docker</text>
+<line class="ll" x1="970.0" y1="68" x2="970.0" y2="652"/>
+<line class="m" x1="90.0" y1="102.0" x2="309.0" y2="102.0"/>
+<text class="mt" x="200.0" y="95.0">POST /files/:id/run { code }</text>
+<path class="self" d="M310.0 138.0 h46 v22 h-44"/>
+<text class="mt" style="text-anchor:start" x="364.0" y="152.0">проверка роли (editor и выше)</text>
+<line class="m" x1="310.0" y1="190.0" x2="529.0" y2="190.0"/>
+<text class="mt" x="420.0" y="183.0">задача в очередь code-runs</text>
+<line class="r" x1="310.0" y1="234.0" x2="91.0" y2="234.0"/>
+<text class="mt" x="200.0" y="227.0">202 { runId }</text>
+<line class="m" x1="530.0" y1="278.0" x2="749.0" y2="278.0"/>
+<text class="mt" x="640.0" y="271.0">задача</text>
+<line class="m" x1="750.0" y1="322.0" x2="531.0" y2="322.0"/>
+<text class="mt" x="640.0" y="315.0">run.started</text>
+<line class="m" x1="750.0" y1="366.0" x2="969.0" y2="366.0"/>
+<text class="mt" x="860.0" y="359.0">docker run (код через stdin)</text>
+<line class="r" x1="970.0" y1="410.0" x2="751.0" y2="410.0"/>
+<text class="mt" x="860.0" y="403.0">stdout / stderr</text>
+<line class="m" x1="750.0" y1="454.0" x2="531.0" y2="454.0"/>
+<text class="mt" x="640.0" y="447.0">run.output (по частям)</text>
+<line class="m" x1="750.0" y1="498.0" x2="531.0" y2="498.0"/>
+<text class="mt" x="640.0" y="491.0">run.finished (статус, строка ошибки)</text>
+<line class="m" x1="530.0" y1="542.0" x2="311.0" y2="542.0"/>
+<text class="mt" x="420.0" y="535.0">канал run-events</text>
+<line class="m" x1="310.0" y1="586.0" x2="91.0" y2="586.0"/>
+<text class="mt" x="200.0" y="579.0">WebSocket /ws: run.* всем участникам</text>
+<text class="nt" x="20" y="684">Лимиты песочницы: без сети, read-only, 128 МБ, 0,5 CPU, 64 процесса, 10 секунд, вывод до 64 КБ.</text>
+</svg>
