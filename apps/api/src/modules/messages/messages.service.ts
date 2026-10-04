@@ -35,7 +35,7 @@ export async function listMessages(
   if (options.before) {
     const cursor = await prisma.message.findUnique({ where: { id: options.before } });
     if (!cursor || cursor.projectId !== projectId) {
-      throw new AppError("Message not found", 404);
+      throw new AppError("Сообщение не найдено", 404);
     }
     createdBefore = cursor.createdAt;
   }

@@ -60,6 +60,14 @@ export const updateInviteRoleSchema = z.object({
 });
 export type UpdateInviteRoleInput = z.infer<typeof updateInviteRoleSchema>;
 
+/** What someone with an invite link may see before signing in. */
+export const invitePreviewSchema = z.object({
+  projectName: z.string(),
+  ownerName: z.string(),
+  role: inviteRoleSchema,
+});
+export type InvitePreview = z.infer<typeof invitePreviewSchema>;
+
 export const inviteLinkSchema = z.object({
   inviteCode: z.string(),
   inviteRole: inviteRoleSchema,

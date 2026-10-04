@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronRight, Folder, FolderOpen, Trash2 } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import type { FileRecord } from "@collab/shared";
 import { ancestorDirs, buildFileTree, type TreeNode } from "../../lib/file-tree";
 import { cn } from "../../lib/cn";
-import { FILE_KINDS } from "./file-kinds";
+import { FILE_KINDS, fileTone } from "./file-kinds";
 
 const INDENT_PX = 14;
 
@@ -14,12 +14,14 @@ export function FileTree({
   canEdit,
   onNavigate,
   onDeleteFile,
+  onRenameFile,
 }: {
   projectId: string;
   files: FileRecord[];
   canEdit: boolean;
   onNavigate: () => void;
   onDeleteFile: (file: FileRecord) => void;
+  onRenameFile: (file: FileRecord) => void;
 }) {
   const tree = useMemo(() => buildFileTree(files), [files]);
   const location = useLocation();
@@ -75,23 +77,33 @@ export function FileTree({
             style={{ paddingLeft: 10 + depth * INDENT_PX + 20 }}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2.5 rounded-lg py-1.5 pr-8 text-sm transition",
+                "flex items-center gap-2.5 rounded-lg py-1.5 pr-14 text-sm transition",
                 isActive ? "bg-accent/15 text-fg" : "text-muted hover:bg-raised hover:text-fg",
               )
             }
           >
-            <kind.icon size={16} className={cn("shrink-0", kind.tone)} />
+            <kind.icon size={16} className={cn("shrink-0", fileTone(node.file.path, node.file.type))} />
             <span className="truncate">{node.name}</span>
           </NavLink>
           {canEdit && (
-            <button
-              onClick={() => onDeleteFile(node.file)}
-              aria-label={`Удалить ${node.file.path}`}
-              title="Удалить файл"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-faint opacity-0 transition hover:bg-bad/15 hover:text-bad focus-visible:opacity-100 group-hover/file:opacity-100"
-            >
-              <Trash2 size={14} />
-            </button>
+            <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center opacity-0 transition focus-within:opacity-100 group-hover/file:opacity-100">
+              <button
+                onClick={() => onRenameFile(node.file)}
+                aria-label={`Переименовать ${node.file.path}`}
+                title="Переименовать"
+                className="rounded p-1 text-faint transition hover:bg-raised hover:text-fg"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                onClick={() => onDeleteFile(node.file)}
+                aria-label={`Удалить ${node.file.path}`}
+                title="Удалить файл"
+                className="rounded p-1 text-faint transition hover:bg-bad/15 hover:text-bad"
+              >
+                <Trash2 size={14} />
+              </button>
+            </span>
           )}
         </li>
       );

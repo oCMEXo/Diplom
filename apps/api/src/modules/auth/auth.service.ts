@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@collab/db";
 import { REFRESH_TOKEN_TTL_SECONDS } from "@collab/shared";
-import type { GuestLoginInput, LoginInput, RegisterInput } from "@collab/shared";
+import type { GuestLoginInput, LoginInput, RegisterInput, UpdateProfileInput } from "@collab/shared";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { signAccessToken } from "../../lib/jwt.js";
 import { generateRefreshToken, hashRefreshToken } from "../../lib/refresh-token.js";
@@ -36,7 +36,7 @@ async function issueTokens(user: { id: string; email: string }) {
 export async function registerUser(input: RegisterInput) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
-    throw new AppError("Email is already registered", 409);
+    throw new AppError("Этот email уже зарегистрирован", 409);
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -51,7 +51,7 @@ export async function registerUser(input: RegisterInput) {
 export async function loginUser(input: LoginInput) {
   const user = await prisma.user.findUnique({ where: { email: input.email } });
   if (!user || !(await verifyPassword(user.passwordHash, input.password))) {
-    throw new AppError("Invalid email or password", 401);
+    throw new AppError("Неверный email или пароль", 401);
   }
 
   const tokens = await issueTokens(user);
@@ -73,6 +73,11 @@ export async function loginAsGuest(input: GuestLoginInput) {
   return { user: toAuthUser(user), tokens };
 }
 
+export async function updateProfile(userId: string, input: UpdateProfileInput) {
+  const user = await prisma.user.update({ where: { id: userId }, data: { name: input.name.trim() } });
+  return toAuthUser(user);
+}
+
 export async function refreshSession(refreshToken: string) {
   const tokenHash = hashRefreshToken(refreshToken);
   const stored = await prisma.refreshToken.findFirst({
@@ -81,7 +86,7 @@ export async function refreshSession(refreshToken: string) {
   });
 
   if (!stored || stored.expiresAt < new Date()) {
-    throw new AppError("Refresh token is invalid or expired", 401);
+    throw new AppError("Сессия истекла. Войдите снова.", 401);
   }
 
   await prisma.refreshToken.delete({ where: { id: stored.id } });

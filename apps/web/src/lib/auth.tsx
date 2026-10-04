@@ -1,6 +1,6 @@
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { AuthResponse, LoginInput, RegisterInput } from "@collab/shared";
+import type { AuthResponse, AuthUser, LoginInput, RegisterInput } from "@collab/shared";
 import { api } from "./api";
 import { tokenStore, type StoredUser } from "./tokenStore";
 
@@ -10,6 +10,7 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   continueAsGuest: (name?: string) => Promise<void>;
+  updateName: (name: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -34,6 +35,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStore.set(result);
   }
 
+  async function updateName(name: string) {
+    const updated = await api.patch<AuthUser>("/auth/me", { name });
+    const current = tokenStore.get();
+    if (current) tokenStore.set({ ...current, user: updated });
+    // Names are shown in lists the server answered earlier; fetch them again.
+    queryClient.invalidateQueries();
+  }
+
   function logout() {
     const current = tokenStore.get();
     if (current) {
@@ -53,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         continueAsGuest,
+        updateName,
         logout,
       }}
     >

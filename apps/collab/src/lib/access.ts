@@ -17,7 +17,7 @@ export async function resolveFileAccess(token: string, fileId: string): Promise<
   }
 
   const file = await prisma.file.findUnique({ where: { id: fileId } });
-  if (!file) {
+  if (!file || file.deletedAt) {
     throw new Error("File not found");
   }
 

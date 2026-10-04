@@ -18,11 +18,11 @@ export async function requireProjectRole(
   });
 
   if (!membership) {
-    throw new AppError("Project not found", 404);
+    throw new AppError("Проект не найден или у вас нет к нему доступа", 404);
   }
 
   if (ROLE_RANK[membership.role] < ROLE_RANK[minRole]) {
-    throw new AppError("Insufficient project role", 403);
+    throw new AppError("Для этого действия не хватает прав в проекте", 403);
   }
 
   return membership.role;

@@ -21,14 +21,15 @@ export function DeleteFileDialog({
     mutationFn: () => api.delete(`/projects/${projectId}/files/${file.id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["trash", projectId] });
       onDeleted();
     },
   });
 
   return (
     <Modal
-      title="Удалить файл?"
-      description={`«${file.path}» исчезнет у всех участников проекта. Восстановить его не получится.`}
+      title="Убрать файл в корзину?"
+      description={`«${file.path}» исчезнет у всех участников проекта, но останется в корзине: его можно восстановить.`}
       onClose={onClose}
     >
       <div className="space-y-4">
@@ -40,7 +41,7 @@ export function DeleteFileDialog({
             Отмена
           </Button>
           <Button variant="danger" onClick={() => remove.mutate()} disabled={remove.isPending}>
-            {remove.isPending ? "Удаляем…" : "Удалить"}
+            {remove.isPending ? "Убираем…" : "В корзину"}
           </Button>
         </div>
       </div>

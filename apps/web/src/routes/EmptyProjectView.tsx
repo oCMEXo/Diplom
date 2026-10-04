@@ -1,10 +1,11 @@
-import { useOutletContext } from "react-router-dom";
+import { Navigate, useOutletContext } from "react-router-dom";
 import { GitBranch, UserPlus } from "lucide-react";
 import type { FileType } from "@collab/shared";
 import { FILE_KINDS } from "../components/layout/ProjectNav";
 import { ProjectHeader } from "../components/layout/ProjectHeader";
 import { Button } from "../components/ui/Button";
 import { cn } from "../lib/cn";
+import { pickStartFile } from "../lib/last-file";
 import type { ProjectOutletContext } from "./ProjectPage";
 
 const DESCRIPTION: Record<FileType, string> = {
@@ -15,6 +16,10 @@ const DESCRIPTION: Record<FileType, string> = {
 
 export function EmptyProjectView() {
   const { project, files, canEdit, shell, createFile, importRepo } = useOutletContext<ProjectOutletContext>();
+
+  // A project that already has files opens on one of them rather than on an empty screen.
+  const start = pickStartFile(project.id, files);
+  if (start) return <Navigate to={`/projects/${project.id}/files/${start.id}`} replace />;
 
   return (
     <>

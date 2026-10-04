@@ -82,15 +82,18 @@ model ProjectMember {
 }
 
 model File {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
-  path      String
-  type      FileKind @default(code)
-  language  String?
-  yjsState  Bytes?   @map("yjs_state")
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  path        String
+  type        FileKind  @default(code)
+  language    String?
+  yjsState    Bytes?    @map("yjs_state")
   // Git blob SHA of the content as of the last sync with GitHub; lets a push see what changed.
-  sourceSha String?  @map("source_sha")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  sourceSha   String?   @map("source_sha")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  // A deleted file stays in the project's trash: its path moves under ".trash/<id>/" and the original is kept here.
+  deletedAt   DateTime? @map("deleted_at")
+  trashedPath String?   @map("trashed_path")
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 

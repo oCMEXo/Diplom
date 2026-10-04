@@ -191,8 +191,13 @@ test("a file can be deleted from the sidebar after confirmation", async ({ brows
   await expect(file).toBeVisible();
   await file.hover();
   await page.getByRole("button", { name: "Удалить лишний.py" }).click();
-  await page.getByRole("button", { name: "Удалить", exact: true }).click();
+  await page.getByRole("button", { name: "В корзину" }).click();
   await expect(file).toHaveCount(0);
+
+  // The file is not gone: it waits in the trash and comes back with a click.
+  await page.getByRole("button", { name: /Корзина/ }).click();
+  await page.getByRole("button", { name: "Восстановить лишний.py" }).click();
+  await expect(page.getByRole("link", { name: "лишний.py" })).toBeVisible();
 });
 
 test("a wrong GitHub token is explained before anything is sent", async ({ browser, request }) => {
@@ -207,7 +212,8 @@ test("a wrong GitHub token is explained before anything is sent", async ({ brows
   await page.getByRole("button", { name: "Создать и импортировать" }).click();
   await expect(page.getByRole("link", { name: "README" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Отправить в GitHub" }).click();
+  await page.getByRole("button", { name: "GitHub", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Отправить изменения/ }).click();
   await page.getByLabel("Токен GitHub").fill("ghp_definitely_not_a_real_token_0000");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("GitHub не принял токен")).toBeVisible({ timeout: 20_000 });
@@ -268,4 +274,101 @@ test("code run can import other files of the project", async ({ browser, request
   await typeInEditor(page, "require('./logger')('привет');");
   await page.getByRole("button", { name: "Запустить" }).click();
   await expect(page.locator("pre")).toContainText("[log] привет", { timeout: 40_000 });
+});
+
+test("an invite link shows where it leads and lets a guest choose a name", async ({ browser, request }) => {
+  const owner = await register(request, "Артём");
+  const project = await createProject(request, owner, "Курсовая");
+
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(`/join/${project.inviteCode}`);
+
+  await expect(page.getByText("Артём приглашает вас в проект")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Курсовая" })).toBeVisible();
+  await page.getByLabel("Как вас зовут?").fill("Влад");
+  await page.getByRole("button", { name: "Присоединиться как гость" }).click();
+
+  await expect(page).toHaveURL(/\/projects\//);
+  await page.getByRole("tab", { name: /Участники/ }).click();
+  await expect(page.getByText(/^Влад/)).toBeVisible();
+  await context.close();
+});
+
+test("an unknown invite link and an unreachable project explain themselves", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+
+  const stranger = await browser.newContext();
+  const invite = await stranger.newPage();
+  await invite.goto("/join/definitely-not-a-code");
+  await expect(invite.getByText("Ссылка-приглашение недействительна или устарела")).toBeVisible();
+  await stranger.close();
+
+  const page = await openAs(browser, owner, "/projects/00000000-0000-4000-8000-000000000000");
+  await expect(page.getByRole("heading", { name: "Проект недоступен" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "К моим проектам" })).toBeVisible();
+});
+
+test("the owner can change a member's role and remove them", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Команда");
+  const visitor = await guest(request, "Влад");
+  await join(request, visitor, project.inviteCode);
+
+  const page = await openAs(browser, owner, `/projects/${project.id}`);
+  await page.getByRole("tab", { name: /Участники/ }).click();
+
+  await page.getByLabel("Роль: Влад").selectOption("viewer");
+  await expect(page.getByLabel("Роль: Влад")).toHaveValue("viewer");
+
+  await page.getByText("Влад", { exact: true }).hover();
+  await page.getByRole("button", { name: "Убрать из проекта: Влад" }).click();
+  await page.getByRole("button", { name: "Убрать", exact: true }).click();
+  await expect(page.getByText("Влад", { exact: true })).toHaveCount(0);
+});
+
+test("a person can change the name others see", async ({ browser, request }) => {
+  const visitor = await guest(request, "Гость");
+  const page = await openAs(browser, visitor, "/");
+
+  await page.getByRole("button", { name: "Меню профиля" }).click();
+  await page.getByRole("menuitem", { name: "Изменить имя" }).click();
+  await page.getByLabel("Имя", { exact: true }).fill("Влад");
+  await page.getByRole("button", { name: "Сохранить" }).click();
+
+  await expect(page.getByRole("heading", { name: "Привет, Влад" })).toBeVisible();
+});
+
+test("a file can be found with Ctrl+P and renamed from the sidebar", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Поиск");
+  await createFile(request, owner, project.id, "scripts/deployLock.js");
+  await createFile(request, owner, project.id, "contracts/Greeter.sol");
+  const page = await openAs(browser, owner, `/projects/${project.id}`);
+  await expect(page.getByRole("link", { name: "Greeter.sol" })).toBeVisible();
+
+  await page.keyboard.press("Control+p");
+  await page.getByLabel("Имя файла").fill("dlock");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/files\//);
+  await expect(page.getByRole("heading", { name: "scripts/deployLock.js" })).toBeVisible();
+
+  await page.getByRole("link", { name: "deployLock.js" }).hover();
+  await page.getByRole("button", { name: "Переименовать scripts/deployLock.js" }).click();
+  await page.getByLabel("Новое имя").fill("scripts/deploy.js");
+  await page.getByRole("button", { name: "Переименовать", exact: true }).click();
+  await expect(page.getByRole("link", { name: "deploy.js", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "scripts/deploy.js" })).toBeVisible();
+});
+
+test("a project that has files opens on one of them, and the tab title names it", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Старт");
+  await createFile(request, owner, project.id, "notes.md", "doc");
+  await createFile(request, owner, project.id, "README.md", "doc");
+  const page = await openAs(browser, owner, `/projects/${project.id}`);
+
+  await expect(page).toHaveURL(/\/files\//);
+  await expect(page.getByRole("heading", { name: "README.md" })).toBeVisible();
+  await expect(page).toHaveTitle(/README\.md · Старт/);
 });

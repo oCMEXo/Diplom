@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Pencil, Sun } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { useTheme } from "../../lib/theme";
 import { Avatar } from "../ui/Avatar";
+import { ChangeNameDialog } from "../ChangeNameDialog";
 import { cn } from "../../lib/cn";
 
 export function UserMenu({ placement = "below" }: { placement?: "below" | "above-right" }) {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,6 +59,17 @@ export function UserMenu({ placement = "below" }: { placement?: "below" | "above
           <div className="my-1 h-px bg-line" />
           <button
             role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setRenaming(true);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted transition hover:bg-raised hover:text-fg"
+          >
+            <Pencil size={16} />
+            Изменить имя
+          </button>
+          <button
+            role="menuitem"
             onClick={toggle}
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted transition hover:bg-raised hover:text-fg"
           >
@@ -73,6 +86,7 @@ export function UserMenu({ placement = "below" }: { placement?: "below" | "above
           </button>
         </div>
       )}
+      {renaming && <ChangeNameDialog onClose={() => setRenaming(false)} />}
     </div>
   );
 }

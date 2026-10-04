@@ -108,8 +108,16 @@ test("interface screenshots", async ({ browser, request }) => {
   await ownerPage.waitForTimeout(500);
   await shot(ownerPage, "07-light-theme");
 
+  const invited = await browser.newContext(ctx);
+  const invitePage = await invited.newPage();
+  await invitePage.goto(`/join/${project.inviteCode}`);
+  await expect(invitePage.getByText("приглашает вас в проект")).toBeVisible();
+  await shot(invitePage, "10-invite-landing");
+  await invited.close();
+
   const importPage = await open(owner, `/projects/${project.id}`);
-  await importPage.getByRole("button", { name: "Импортировать из GitHub" }).click();
+  await importPage.getByRole("button", { name: "GitHub", exact: true }).click();
+  await importPage.getByRole("menuitem", { name: /Импортировать репозиторий/ }).click();
   await importPage.getByLabel("Ссылка на репозиторий").fill("https://github.com/octocat/Hello-World");
   await importPage.waitForTimeout(300);
   await shot(importPage, "09-import-github");

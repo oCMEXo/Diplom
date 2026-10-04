@@ -11,12 +11,15 @@ import { ProjectHeader, type SyncStatus } from "../components/layout/ProjectHead
 import { Button } from "../components/ui/Button";
 import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
+import { rememberFile } from "../lib/last-file";
 import { useRun } from "../lib/RealtimeContext";
 import type { ProjectOutletContext } from "./ProjectPage";
 
+const DEFAULT_TITLE = "Collab — совместная работа над проектом";
+
 export function FileEditorPage() {
   const { projectId, fileId } = useParams<{ projectId: string; fileId: string }>();
-  const { files, canEdit, shell } = useOutletContext<ProjectOutletContext>();
+  const { files, canEdit, shell, project } = useOutletContext<ProjectOutletContext>();
   const file = files.find((f) => f.id === fileId);
   const controller = useRef<EditorController | null>(null);
   const [activeController, setActiveController] = useState<EditorController | null>(null);
@@ -32,6 +35,19 @@ export function FileEditorPage() {
     setRunError(null);
     setStatus("connecting");
   }, [fileId]);
+
+  useEffect(() => {
+    if (projectId && fileId) rememberFile(projectId, fileId);
+  }, [projectId, fileId]);
+
+  const filePath = file?.path;
+  useEffect(() => {
+    if (!filePath) return;
+    document.title = `${filePath} · ${project.name} — Collab`;
+    return () => {
+      document.title = DEFAULT_TITLE;
+    };
+  }, [filePath, project.name]);
 
   useEffect(() => {
     if (run?.status === "running") controller.current?.setErrorLine(null);

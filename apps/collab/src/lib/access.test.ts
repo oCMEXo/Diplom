@@ -50,6 +50,14 @@ describe("resolveFileAccess", () => {
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   });
 
+  it("does not open a file that is in the trash", async () => {
+    const owner = await user();
+    const { file } = await projectWithFile(owner.id, null);
+    await prisma.file.update({ where: { id: file.id }, data: { deletedAt: new Date() } });
+
+    await expect(resolveFileAccess(signToken(owner.id), file.id)).rejects.toThrow("File not found");
+  });
+
   it("grants access for a project member with their role", async () => {
     const owner = await user();
     const editor = await user();

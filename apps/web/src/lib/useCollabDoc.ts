@@ -21,7 +21,8 @@ export function useCollabDoc(fileId: string) {
       url: COLLAB_URL,
       name: fileId,
       token: auth.tokens.accessToken,
-      onStatus: ({ status: value }) => setStatus(value === "connected" ? "connected" : "offline"),
+      onStatus: ({ status: value }) =>
+        setStatus(value === "connected" ? "connected" : value === "connecting" ? "connecting" : "offline"),
     });
     const persistence = new IndexeddbPersistence(fileId, next.document);
     next.setAwarenessField("user", { name: auth.user.name, color: colorForUser(auth.user.id) });

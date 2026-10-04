@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { GitBranch, GitCommitHorizontal, Plus, UserPlus } from "lucide-react";
+import { Plus, Search, UserPlus } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -10,6 +10,8 @@ import { Button, IconButton } from "../ui/Button";
 import { LogoMark } from "../ui/Logo";
 import { RoleBadge } from "../ui/RoleBadge";
 import { FileTree } from "./FileTree";
+import { GithubMenu } from "./GithubMenu";
+import { TrashSection } from "./TrashSection";
 import { UserMenu } from "./UserMenu";
 
 export { FILE_KINDS } from "./file-kinds";
@@ -78,6 +80,8 @@ export function ProjectNav({
   onImport,
   onPush,
   onDeleteFile,
+  onRenameFile,
+  onSearch,
   onNavigate,
 }: {
   project: ProjectWithMembers;
@@ -89,6 +93,8 @@ export function ProjectNav({
   onImport: () => void;
   onPush: () => void;
   onDeleteFile: (file: FileRecord) => void;
+  onRenameFile: (file: FileRecord) => void;
+  onSearch: () => void;
   onNavigate: () => void;
 }) {
   const online = useOnlineUsers();
@@ -107,6 +113,19 @@ export function ProjectNav({
             <UserPlus size={17} />
           </IconButton>
         </div>
+
+        {files.length > 0 && (
+          <div className="px-3 pt-3">
+            <button
+              onClick={onSearch}
+              className="flex h-8 w-full items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 text-left text-xs text-faint transition hover:border-faint hover:text-muted"
+            >
+              <Search size={14} />
+              <span className="flex-1">Найти файл</span>
+              <kbd className="rounded border border-line px-1 text-[10px]">Ctrl P</kbd>
+            </button>
+          </div>
+        )}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
           <div className="mb-1 flex items-center justify-between px-2">
@@ -128,7 +147,9 @@ export function ProjectNav({
             canEdit={canEdit}
             onNavigate={onNavigate}
             onDeleteFile={onDeleteFile}
+            onRenameFile={onRenameFile}
           />
+          <TrashSection projectId={project.id} canEdit={canEdit} isOwner={project.myRole === "owner"} />
         </div>
 
         <div className="space-y-2 border-t border-line p-3">
@@ -138,17 +159,8 @@ export function ProjectNav({
                 <Plus size={14} />
                 Файл
               </Button>
-              <Button size="sm" className="flex-1" onClick={onImport} title="Импортировать репозиторий GitHub">
-                <GitBranch size={14} />
-                GitHub
-              </Button>
+              <GithubMenu onImport={onImport} onPush={onPush} canPush={files.length > 0} />
             </div>
-          )}
-          {canEdit && files.length > 0 && (
-            <Button size="sm" className="w-full" onClick={onPush} title="Отправить изменения коммитом в репозиторий GitHub">
-              <GitCommitHorizontal size={14} />
-              Отправить в GitHub
-            </Button>
           )}
           <p className="flex items-center gap-2 px-1 text-xs text-muted">
             <span

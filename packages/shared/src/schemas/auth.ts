@@ -23,6 +23,11 @@ export const guestLoginSchema = z.object({
 });
 export type GuestLoginInput = z.infer<typeof guestLoginSchema>;
 
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
 export const authUserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),

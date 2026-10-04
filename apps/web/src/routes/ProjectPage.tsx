@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { FileRecord, FileType, ProjectWithMembers } from "@collab/shared";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
 import { RealtimeProvider } from "../lib/RealtimeContext";
 import { CreateFileDialog } from "../components/CreateFileDialog";
@@ -10,10 +10,13 @@ import { CreateProjectDialog } from "../components/CreateProjectDialog";
 import { DeleteFileDialog } from "../components/DeleteFileDialog";
 import { ImportGithubDialog } from "../components/ImportGithubDialog";
 import { PushGithubDialog } from "../components/PushGithubDialog";
+import { QuickOpen } from "../components/QuickOpen";
+import { RenameFileDialog } from "../components/RenameFileDialog";
 import { InviteDialog } from "../components/InviteDialog";
 import { ProjectNav } from "../components/layout/ProjectNav";
 import { SidePanel } from "../components/layout/SidePanel";
 import type { ShellActions } from "../components/layout/ProjectHeader";
+import { ErrorScreen } from "../components/ui/ErrorScreen";
 import { FullScreenLoader } from "../components/ui/Spinner";
 
 export interface ProjectOutletContext {
@@ -41,17 +44,31 @@ export function ProjectPage() {
   const [importing, setImporting] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [deletingFile, setDeletingFile] = useState<FileRecord | null>(null);
+  const [renamingFile, setRenamingFile] = useState<FileRecord | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  // Ctrl+P (or Ctrl+K) opens "go to file" instead of the browser's print dialog.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && ["p", "k"].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+        setSearching(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // The mobile drawers should not stay open after moving to another page.
   useEffect(() => setNavOpen(false), [location.pathname]);
 
-  const { data: project } = useQuery({
+  const { data: project, error: projectError, refetch: refetchProject } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => api.get<ProjectWithMembers>(`/projects/${projectId}`),
     enabled: !!projectId,
   });
 
-  const { data: files } = useQuery({
+  const { data: files, error: filesError, refetch: refetchFiles } = useQuery({
     queryKey: ["files", projectId],
     queryFn: () => api.get<FileRecord[]>(`/projects/${projectId}/files`),
     enabled: !!projectId,
@@ -66,6 +83,28 @@ export function ProjectPage() {
     },
   });
 
+  const loadError = projectError ?? filesError;
+  if ((!project || !files) && loadError) {
+    const missing = loadError instanceof ApiError && (loadError.status === 404 || loadError.status === 403);
+    return (
+      <ErrorScreen
+        title={missing ? "Проект недоступен" : "Не удалось открыть проект"}
+        message={
+          missing
+            ? "Проекта нет или у вас нет к нему доступа: возможно, ссылка устарела или вас убрали из участников."
+            : "Похоже, нет связи с сервером. Проверьте интернет и попробуйте ещё раз."
+        }
+        onRetry={
+          missing
+            ? undefined
+            : () => {
+                void refetchProject();
+                void refetchFiles();
+              }
+        }
+      />
+    );
+  }
   if (!project || !files) return <FullScreenLoader label="Открываем проект…" />;
 
   const canEdit = project.myRole === "owner" || project.myRole === "editor";
@@ -98,6 +137,8 @@ export function ProjectPage() {
             onImport={() => setImporting(true)}
             onPush={() => setPushing(true)}
             onDeleteFile={setDeletingFile}
+            onRenameFile={setRenamingFile}
+            onSearch={() => setSearching(true)}
             onNavigate={() => setNavOpen(false)}
           />
         </div>
@@ -130,6 +171,19 @@ export function ProjectPage() {
       {inviteOpen && <InviteDialog project={project} onClose={() => setInviteOpen(false)} />}
       {importing && <ImportGithubDialog project={project} onClose={() => setImporting(false)} />}
       {pushing && <PushGithubDialog project={project} onClose={() => setPushing(false)} />}
+      {searching && (
+        <QuickOpen
+          files={files}
+          onClose={() => setSearching(false)}
+          onOpen={(file) => {
+            setSearching(false);
+            navigate(`/projects/${project.id}/files/${file.id}`);
+          }}
+        />
+      )}
+      {renamingFile && (
+        <RenameFileDialog projectId={project.id} file={renamingFile} files={files} onClose={() => setRenamingFile(null)} />
+      )}
       {deletingFile && (
         <DeleteFileDialog
           projectId={project.id}

@@ -13,7 +13,7 @@ import { yjsStateToText } from "../../lib/yjs-text.js";
  */
 async function siblingFiles(projectId: string, entryId: string) {
   const rows = await prisma.file.findMany({
-    where: { projectId, id: { not: entryId }, type: { not: "board" } },
+    where: { projectId, id: { not: entryId }, type: { not: "board" }, deletedAt: null },
     select: { path: true, yjsState: true },
   });
   const candidates = rows
@@ -42,16 +42,16 @@ export async function requestRun(
   await requireProjectRole(projectId, userId, "editor");
 
   const file = await prisma.file.findUnique({ where: { id: fileId } });
-  if (!file || file.projectId !== projectId) {
-    throw new AppError("File not found", 404);
+  if (!file || file.projectId !== projectId || file.deletedAt) {
+    throw new AppError("Файл не найден", 404);
   }
   if (file.type !== "code") {
-    throw new AppError("Only code files can be run", 400);
+    throw new AppError("Запускать можно только файлы с кодом", 400);
   }
 
   const language = toRunnableLanguage(file.language ?? inferLanguage(file.path));
   if (!language) {
-    throw new AppError("Only JavaScript and Python files can be run", 400);
+    throw new AppError("Запускать можно только файлы JavaScript и Python", 400);
   }
 
   const user = await prisma.user.findUniqueOrThrow({

@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@collab/db";
 import type { RunJob } from "@collab/shared";
 import { createProject } from "../projects/projects.service.js";
-import { createFile } from "../files/files.service.js";
+import { createFile, deleteFile } from "../files/files.service.js";
 import { textToYjsState } from "../../lib/yjs-text.js";
 import { requestRun } from "./runs.service.js";
 
@@ -77,6 +77,22 @@ describe("requestRun", () => {
       { path: "logger.js", content: "module.exports = () => {};" },
       { path: "lib/empty.py", content: "" },
     ]);
+  });
+
+  it("neither runs nor sends files that are in the trash", async () => {
+    const owner = await user();
+    const { project, file } = await projectWithFile(owner.id, "main.py");
+    const other = await createFile(owner.id, project.id, { path: "helper.py", type: "code" });
+    await deleteFile(owner.id, project.id, other.id);
+
+    const jobs: RunJob[] = [];
+    await requestRun(owner.id, project.id, file.id, "print(1)", async (j) => void jobs.push(j));
+    expect(jobs[0]?.files).toEqual([]);
+
+    await deleteFile(owner.id, project.id, file.id);
+    await expect(requestRun(owner.id, project.id, file.id, "print(1)", async () => undefined)).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 
   it("runs javascript files too", async () => {

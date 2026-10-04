@@ -110,7 +110,7 @@ export async function pushToGithub(
   }
   const remote = new Map(remoteTree.tree.filter((entry) => entry.type === "blob").map((entry) => [entry.path, entry]));
 
-  const files = await prisma.file.findMany({ where: { projectId, type: { not: "board" } } });
+  const files = await prisma.file.findMany({ where: { projectId, type: { not: "board" }, deletedAt: null } });
   const changes: { path: string; mode: string; content: string; id: string; sha: string }[] = [];
   const conflicts: string[] = [];
   const inSync: { id: string; sha: string }[] = [];

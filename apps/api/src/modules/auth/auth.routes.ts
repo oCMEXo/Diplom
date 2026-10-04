@@ -2,11 +2,13 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import {
   authResponseSchema,
+  authUserSchema,
   errorResponseSchema,
   guestLoginSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
+  updateProfileSchema,
 } from "@collab/shared";
 import {
   loginAsGuest,
@@ -14,6 +16,7 @@ import {
   refreshSession,
   registerUser,
   revokeRefreshToken,
+  updateProfile,
 } from "./auth.service.js";
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -101,5 +104,19 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       return reply.send({ userId: request.userId });
     },
+  );
+
+  app.patch(
+    "/me",
+    {
+      preHandler: [app.authenticate],
+      schema: {
+        tags: ["auth"],
+        security: [{ bearerAuth: [] }],
+        body: updateProfileSchema,
+        response: { 200: authUserSchema },
+      },
+    },
+    async (request) => updateProfile(request.userId, request.body),
   );
 };

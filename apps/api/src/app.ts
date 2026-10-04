@@ -32,8 +32,11 @@ export async function buildApp() {
     if (error instanceof AppError) {
       return reply.code(error.statusCode).send({ message: error.message });
     }
-    if (error.validation || (error.statusCode && error.statusCode < 500)) {
-      return reply.code(error.statusCode ?? 400).send({ message: error.message });
+    if (error.validation) {
+      return reply.code(400).send({ message: "Проверьте введённые данные: что-то заполнено неверно." });
+    }
+    if (error.statusCode && error.statusCode < 500) {
+      return reply.code(error.statusCode).send({ message: error.message });
     }
     request.log.error(error);
     return reply.code(500).send({ message: "Internal Server Error" });

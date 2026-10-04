@@ -57,7 +57,7 @@ export function SidePanel({
         <ChatPanel key={project.id} projectId={project.id} />
       </div>
       <div className={cn("min-h-0 flex-1", tab !== "members" && "hidden")}>
-        <MembersPanel members={project.members} onInvite={onInvite} />
+        <MembersPanel projectId={project.id} members={project.members} isOwner={project.myRole === "owner"} onInvite={onInvite} />
       </div>
     </div>
   );
