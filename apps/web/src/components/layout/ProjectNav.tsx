@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { FileCode2, FileText, PenTool, Plus, UserPlus, type LucideIcon } from "lucide-react";
+import { FileCode2, FileText, GitBranch, PenTool, Plus, UserPlus, type LucideIcon } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -83,6 +83,7 @@ export function ProjectNav({
   onCreateFile,
   onCreateProject,
   onInvite,
+  onImport,
   onNavigate,
 }: {
   project: ProjectWithMembers;
@@ -91,6 +92,7 @@ export function ProjectNav({
   onCreateFile: (type: FileType) => void;
   onCreateProject: () => void;
   onInvite: () => void;
+  onImport: () => void;
   onNavigate: () => void;
 }) {
   const online = useOnlineUsers();
@@ -163,11 +165,17 @@ export function ProjectNav({
         </div>
 
         <div className="space-y-2 border-t border-line p-3">
-          {canEdit && files.length > 0 && (
-            <Button size="sm" className="w-full" onClick={() => onCreateFile("code")}>
-              <Plus size={14} />
-              Новый файл
-            </Button>
+          {canEdit && (
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1" onClick={() => onCreateFile("code")}>
+                <Plus size={14} />
+                Файл
+              </Button>
+              <Button size="sm" className="flex-1" onClick={onImport} title="Импортировать репозиторий GitHub">
+                <GitBranch size={14} />
+                GitHub
+              </Button>
+            </div>
           )}
           <p className="flex items-center gap-2 px-1 text-xs text-muted">
             <span

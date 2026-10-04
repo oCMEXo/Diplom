@@ -7,6 +7,7 @@ import { cn } from "../lib/cn";
 import { RealtimeProvider } from "../lib/RealtimeContext";
 import { CreateFileDialog } from "../components/CreateFileDialog";
 import { CreateProjectDialog } from "../components/CreateProjectDialog";
+import { ImportGithubDialog } from "../components/ImportGithubDialog";
 import { InviteDialog } from "../components/InviteDialog";
 import { ProjectNav } from "../components/layout/ProjectNav";
 import { SidePanel } from "../components/layout/SidePanel";
@@ -19,6 +20,7 @@ export interface ProjectOutletContext {
   project: ProjectWithMembers;
   shell: ShellActions;
   createFile: (type: FileType) => void;
+  importRepo: () => void;
 }
 
 const WIDE = "(min-width: 1280px)";
@@ -34,6 +36,7 @@ export function ProjectPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [creatingFile, setCreatingFile] = useState<FileType | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // The mobile drawers should not stay open after moving to another page.
   useEffect(() => setNavOpen(false), [location.pathname]);
@@ -88,6 +91,7 @@ export function ProjectPage() {
             onCreateFile={setCreatingFile}
             onCreateProject={() => setCreatingProject(true)}
             onInvite={() => setInviteOpen(true)}
+            onImport={() => setImporting(true)}
             onNavigate={() => setNavOpen(false)}
           />
         </div>
@@ -95,7 +99,14 @@ export function ProjectPage() {
         <main className="flex min-w-0 flex-1 flex-col">
           <Outlet
             context={
-              { files, canEdit, project, shell, createFile: setCreatingFile } satisfies ProjectOutletContext
+              {
+                files,
+                canEdit,
+                project,
+                shell,
+                createFile: setCreatingFile,
+                importRepo: () => setImporting(true),
+              } satisfies ProjectOutletContext
             }
           />
         </main>
@@ -111,6 +122,7 @@ export function ProjectPage() {
       </div>
 
       {inviteOpen && <InviteDialog project={project} onClose={() => setInviteOpen(false)} />}
+      {importing && <ImportGithubDialog projectId={project.id} onClose={() => setImporting(false)} />}
       {creatingFile && (
         <CreateFileDialog
           initialType={creatingFile}

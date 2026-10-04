@@ -160,3 +160,22 @@ test("a file can be created from the sidebar and the theme choice is remembered"
   await page.reload();
   expect(await theme()).toBe(after);
 });
+
+test("a public GitHub repository can be imported into a new project", async ({ browser, request }) => {
+  const github = await request.get("https://codeload.github.com/octocat/Hello-World/zip/HEAD").catch(() => null);
+  test.skip(!github?.ok(), "needs network access to GitHub");
+
+  const owner = await register(request, "Аня");
+  const page = await openAs(browser, owner, "/");
+
+  await page.getByRole("button", { name: "Новый проект" }).first().click();
+  await page.getByRole("radio", { name: "Из GitHub" }).click();
+  await page.getByLabel("Ссылка на репозиторий").fill("https://github.com/octocat/Hello-World");
+  await page.getByRole("button", { name: "Создать и импортировать" }).click();
+
+  await expect(page).toHaveURL(/\/projects\//);
+  const file = page.getByRole("link", { name: "README" });
+  await expect(file).toBeVisible();
+  await file.click();
+  await expect(page.locator(".monaco-editor .view-lines")).toContainText("Hello World!");
+});

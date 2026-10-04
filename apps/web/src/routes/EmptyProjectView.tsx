@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router-dom";
-import { UserPlus } from "lucide-react";
+import { GitBranch, UserPlus } from "lucide-react";
 import type { FileType } from "@collab/shared";
 import { FILE_KINDS } from "../components/layout/ProjectNav";
 import { ProjectHeader } from "../components/layout/ProjectHeader";
@@ -14,7 +14,7 @@ const DESCRIPTION: Record<FileType, string> = {
 };
 
 export function EmptyProjectView() {
-  const { project, files, canEdit, shell, createFile } = useOutletContext<ProjectOutletContext>();
+  const { project, files, canEdit, shell, createFile, importRepo } = useOutletContext<ProjectOutletContext>();
 
   return (
     <>
@@ -55,7 +55,13 @@ export function EmptyProjectView() {
             </div>
           )}
 
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {canEdit && (
+              <Button variant="primary" onClick={importRepo}>
+                <GitBranch size={15} />
+                Импортировать из GitHub
+              </Button>
+            )}
             <Button onClick={shell.openInvite}>
               <UserPlus size={15} />
               Пригласить участников

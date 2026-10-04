@@ -18,6 +18,7 @@ import { filesRoutes } from "./modules/files/files.routes.js";
 import { messagesRoutes } from "./modules/messages/messages.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
 import { runsRoutes } from "./modules/runs/runs.routes.js";
+import { importRoutes } from "./modules/import/import.routes.js";
 import { closeRunQueue } from "./lib/queue.js";
 
 export async function buildApp() {
@@ -62,6 +63,7 @@ export async function buildApp() {
   await app.register(inviteRoutes);
   await app.register(messagesRoutes, { prefix: "/projects" });
   await app.register(runsRoutes, { prefix: "/projects" });
+  await app.register(importRoutes, { prefix: "/projects" });
   await app.register(realtimeRoutes);
 
   app.addHook("onClose", closeRunQueue);
