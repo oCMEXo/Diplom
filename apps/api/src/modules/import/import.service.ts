@@ -20,7 +20,7 @@ export async function importFromGithub(
   }
 
   const zip = await downloadRepoZip(repo, fetchImpl);
-  const { files, skipped } = extractRepoFiles(zip);
+  const { files, skipped, skippedPaths } = extractRepoFiles(zip);
 
   const existing = new Set(
     (await prisma.file.findMany({ where: { projectId }, select: { path: true } })).map((file) => file.path),
@@ -42,5 +42,6 @@ export async function importFromGithub(
     repo: { owner: repo.owner, name: repo.repo, ref: repo.ref },
     imported: created.count,
     skipped: { ...skipped, existing: files.length - created.count },
+    skippedPaths,
   };
 }

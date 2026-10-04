@@ -15,5 +15,7 @@ export const importResultSchema = z.object({
     tooLarge: z.number().int(),
     overLimit: z.number().int(),
   }),
+  /** A few of the skipped files, by name, so it is clear what did not come along. */
+  skippedPaths: z.array(z.string()),
 });
 export type ImportResult = z.infer<typeof importResultSchema>;

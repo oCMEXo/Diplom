@@ -21,6 +21,15 @@ const EXTENSION_LANGUAGES: Record<string, string> = {
   cpp: "cpp",
   go: "go",
   rs: "rust",
+  sol: "solidity",
+  php: "php",
+  rb: "ruby",
+  cs: "csharp",
+  kt: "kotlin",
+  swift: "swift",
+  xml: "xml",
+  h: "c",
+  hpp: "cpp",
 };
 
 export function inferLanguage(path: string): string | null {

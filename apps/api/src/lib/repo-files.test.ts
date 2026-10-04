@@ -25,7 +25,7 @@ describe("extractRepoFiles", () => {
   });
 
   it("skips dependencies, build output, lockfiles and minified files", () => {
-    const { files, skipped } = extractRepoFiles(
+    const { files, skipped, skippedPaths } = extractRepoFiles(
       archive({
         "main.js": "1",
         "node_modules/lib/index.js": "x",
@@ -37,6 +37,7 @@ describe("extractRepoFiles", () => {
     );
     expect(files.map((f) => f.path)).toEqual(["main.js"]);
     expect(skipped.ignored).toBe(5);
+    expect(skippedPaths).toEqual(["node_modules/", ".git/", "dist/", "package-lock.json", "public/app.min.js"]);
   });
 
   it("skips binary files and files with invalid UTF-8", () => {

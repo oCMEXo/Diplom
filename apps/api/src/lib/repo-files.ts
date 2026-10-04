@@ -29,6 +29,7 @@ const IGNORED_DIRS = new Set([
 ]);
 const IGNORED_FILES = new Set([".DS_Store", "Thumbs.db", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock"]);
 const MAX_PATH_LENGTH = 500;
+const MAX_SKIPPED_NAMES = 12;
 
 function isIgnored(path: string) {
   const parts = path.split("/");
@@ -39,6 +40,13 @@ function isIgnored(path: string) {
     /\.min\.(js|css)$/i.test(name) ||
     /\.map$/i.test(name)
   );
+}
+
+/** Files inside an ignored folder are reported as the folder ("node_modules/"), not one by one. */
+function skipLabel(path: string) {
+  const parts = path.split("/");
+  const index = parts.slice(0, -1).findIndex((part) => IGNORED_DIRS.has(part));
+  return index === -1 ? path : `${parts.slice(0, index + 1).join("/")}/`;
 }
 
 function isSafePath(path: string) {
@@ -70,8 +78,13 @@ function stripRoot(name: string) {
  * Picks the text files worth importing from a repository archive: no build output, lockfiles or
  * binaries, nothing above the size limits. Shallow files win when the file limit is reached.
  */
-export function extractRepoFiles(zip: Uint8Array): { files: RepoFile[]; skipped: Omit<SkipCounts, "existing"> } {
+export function extractRepoFiles(zip: Uint8Array): {
+  files: RepoFile[];
+  skipped: Omit<SkipCounts, "existing">;
+  skippedPaths: string[];
+} {
   const skipped = { ignored: 0, binary: 0, tooLarge: 0, overLimit: 0 };
+  const skippedPaths = new Set<string>();
   const candidates: { entry: string; path: string; size: number }[] = [];
 
   try {
@@ -82,8 +95,10 @@ export function extractRepoFiles(zip: Uint8Array): { files: RepoFile[]; skipped:
         const path = stripRoot(file.name);
         if (!isSafePath(path) || isIgnored(path)) {
           skipped.ignored += 1;
+          skippedPaths.add(skipLabel(path));
         } else if (file.originalSize > IMPORT_LIMITS.maxFileBytes) {
           skipped.tooLarge += 1;
+          skippedPaths.add(path);
         } else {
           candidates.push({ entry: file.name, path, size: file.originalSize });
         }
@@ -120,6 +135,7 @@ export function extractRepoFiles(zip: Uint8Array): { files: RepoFile[]; skipped:
     const text = bytes ? decodeText(bytes) : null;
     if (text === null) {
       skipped.binary += 1;
+      skippedPaths.add(path);
       continue;
     }
     const isMarkdown = /\.(md|markdown)$/i.test(path);
@@ -131,5 +147,5 @@ export function extractRepoFiles(zip: Uint8Array): { files: RepoFile[]; skipped:
     });
   }
   files.sort((a, b) => a.path.localeCompare(b.path));
-  return { files, skipped };
+  return { files, skipped, skippedPaths: [...skippedPaths].slice(0, MAX_SKIPPED_NAMES) };
 }

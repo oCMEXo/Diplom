@@ -49,6 +49,9 @@ export function ImportGithubDialog({ projectId, onClose }: { projectId: string; 
                 {result.repo.owner}/{result.repo.name}: добавлено файлов — {result.imported}
               </p>
               {skipped.length > 0 && <p className="mt-1 text-muted">Пропущено: {skipped.join("; ")}.</p>}
+              {result.skippedPaths.length > 0 && (
+                <p className="mt-1 break-words font-mono text-xs text-faint">{result.skippedPaths.join(", ")}</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end">
