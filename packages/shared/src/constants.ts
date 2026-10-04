@@ -13,7 +13,7 @@ export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 /** Limits for importing a repository, so one request cannot flood a project or the server. */
 export const IMPORT_LIMITS = {
   maxZipBytes: 25 * 1024 * 1024,
-  maxFiles: 300,
-  maxFileBytes: 200 * 1024,
-  maxTotalBytes: 5 * 1024 * 1024,
+  maxFiles: 500,
+  maxFileBytes: 512 * 1024,
+  maxTotalBytes: 10 * 1024 * 1024,
 } as const;

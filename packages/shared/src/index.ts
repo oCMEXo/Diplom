@@ -4,6 +4,7 @@ export * from "./schemas/auth.js";
 export * from "./schemas/error.js";
 export * from "./schemas/file.js";
 export * from "./schemas/import.js";
+export * from "./schemas/github.js";
 export * from "./schemas/message.js";
 export * from "./schemas/run.js";
 export * from "./schemas/realtime.js";

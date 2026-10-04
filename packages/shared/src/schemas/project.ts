@@ -19,6 +19,14 @@ export type ProjectMember = z.infer<typeof projectMemberSchema>;
 export const inviteRoleSchema = z.enum(["editor", "viewer"]);
 export type InviteRole = z.infer<typeof inviteRoleSchema>;
 
+export const githubLinkSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  /** `null` means the repository's default branch. */
+  branch: z.string().nullable(),
+});
+export type GithubLink = z.infer<typeof githubLinkSchema>;
+
 export const projectSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -27,6 +35,7 @@ export const projectSchema = z.object({
   myRole: projectRoleSchema,
   inviteCode: z.string(),
   inviteRole: inviteRoleSchema,
+  github: githubLinkSchema.nullable(),
 });
 export type Project = z.infer<typeof projectSchema>;
 

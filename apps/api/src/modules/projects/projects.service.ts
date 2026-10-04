@@ -11,6 +11,9 @@ interface ProjectLike {
   createdAt: Date;
   inviteCode: string;
   inviteRole: ProjectRole;
+  githubOwner: string | null;
+  githubRepo: string | null;
+  githubBranch: string | null;
 }
 
 function toProjectDto(project: ProjectLike, myRole: ProjectRole) {
@@ -22,6 +25,10 @@ function toProjectDto(project: ProjectLike, myRole: ProjectRole) {
     myRole,
     inviteCode: project.inviteCode,
     inviteRole: project.inviteRole as InviteRole,
+    github:
+      project.githubOwner && project.githubRepo
+        ? { owner: project.githubOwner, repo: project.githubRepo, branch: project.githubBranch }
+        : null,
   };
 }
 

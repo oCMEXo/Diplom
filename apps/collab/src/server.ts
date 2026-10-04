@@ -7,6 +7,9 @@ const server = Server.configure({
   port: env.PORT,
   address: env.HOST,
   extensions: [databaseExtension],
+  // Snapshots reach the database within a few seconds, which is what "push to GitHub" reads.
+  debounce: 1000,
+  maxDebounce: 3000,
   async onAuthenticate(data) {
     const { token, documentName, connection } = data;
 

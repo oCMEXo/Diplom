@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, GitBranch } from "lucide-react";
-import { IMPORT_LIMITS, type ImportResult } from "@collab/shared";
+import { IMPORT_LIMITS, type ImportResult, type ProjectWithMembers } from "@collab/shared";
+import { repoSlug } from "../lib/github-url";
 import { api, ApiError } from "../lib/api";
 import { Button } from "./ui/Button";
 import { ErrorNote, Field } from "./ui/Field";
@@ -17,7 +18,8 @@ export function describeSkipped(skipped: ImportResult["skipped"]) {
   return parts;
 }
 
-export function ImportGithubDialog({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+export function ImportGithubDialog({ project, onClose }: { project: ProjectWithMembers; onClose: () => void }) {
+  const projectId = project.id;
   const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
 
@@ -31,6 +33,9 @@ export function ImportGithubDialog({ projectId, onClose }: { projectId: string; 
     if (url.trim() && !importRepo.isPending) importRepo.mutate(url.trim());
   }
 
+  const linkedSlug = project.github ? `${project.github.owner}/${project.github.repo}`.toLowerCase() : null;
+  const typedSlug = repoSlug(url);
+  const mixesRepos = !!linkedSlug && !!typedSlug && typedSlug !== linkedSlug;
   const result = importRepo.data;
   const skipped = result ? describeSkipped(result.skipped) : [];
 
@@ -66,6 +71,12 @@ export function ImportGithubDialog({ projectId, onClose }: { projectId: string; 
             <ErrorNote>
               {importRepo.error instanceof ApiError ? importRepo.error.message : "Не удалось импортировать репозиторий"}
             </ErrorNote>
+          )}
+          {mixesRepos && (
+            <p className="rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
+              Этот проект связан с {project.github!.owner}/{project.github!.repo}. Файлы из другого репозитория
+              добавятся к нему и смешаются с текущими. Для другого репозитория лучше создать новый проект.
+            </p>
           )}
           <Field
             label="Ссылка на репозиторий"

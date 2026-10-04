@@ -1,45 +1,30 @@
 import { unzipSync } from "fflate";
 import { IMPORT_LIMITS, inferLanguage, type FileType, type ImportResult } from "@collab/shared";
 import { AppError } from "./errors.js";
+import { gitBlobSha } from "./git-blob.js";
 
 export interface RepoFile {
   path: string;
   text: string;
   type: FileType;
   language: string | null;
+  /** Git blob SHA of the original bytes, to tell later whether the file changed. */
+  sha: string;
 }
 
 export type SkipCounts = ImportResult["skipped"];
 
-const IGNORED_DIRS = new Set([
-  ".git",
-  "node_modules",
-  "dist",
-  "build",
-  "out",
-  "target",
-  "vendor",
-  ".next",
-  ".nuxt",
-  ".cache",
-  "__pycache__",
-  ".venv",
-  "venv",
-  ".idea",
-]);
-const IGNORED_FILES = new Set([".DS_Store", "Thumbs.db", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock"]);
+// A repository is imported as it is. Only what can never be useful (git internals, installed
+// dependencies, OS litter) is left out; binaries and oversized files are skipped by the size checks.
+const IGNORED_DIRS = new Set([".git", "node_modules"]);
+const IGNORED_FILES = new Set([".DS_Store", "Thumbs.db"]);
 const MAX_PATH_LENGTH = 500;
 const MAX_SKIPPED_NAMES = 12;
 
 function isIgnored(path: string) {
   const parts = path.split("/");
   const name = parts[parts.length - 1]!;
-  return (
-    parts.slice(0, -1).some((part) => IGNORED_DIRS.has(part)) ||
-    IGNORED_FILES.has(name) ||
-    /\.min\.(js|css)$/i.test(name) ||
-    /\.map$/i.test(name)
-  );
+  return parts.slice(0, -1).some((part) => IGNORED_DIRS.has(part)) || IGNORED_FILES.has(name);
 }
 
 /** Files inside an ignored folder are reported as the folder ("node_modules/"), not one by one. */
@@ -144,6 +129,7 @@ export function extractRepoFiles(zip: Uint8Array): {
       text,
       type: isMarkdown ? "doc" : "code",
       language: isMarkdown ? "markdown" : inferLanguage(path),
+      sha: gitBlobSha(bytes!),
     });
   }
   files.sort((a, b) => a.path.localeCompare(b.path));

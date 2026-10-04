@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { FileCode2, FileText, GitBranch, PenTool, Plus, UserPlus, type LucideIcon } from "lucide-react";
+import { FileCode2, FileText, GitBranch, GitCommitHorizontal, PenTool, Plus, Trash2, UserPlus, type LucideIcon } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -84,6 +84,8 @@ export function ProjectNav({
   onCreateProject,
   onInvite,
   onImport,
+  onPush,
+  onDeleteFile,
   onNavigate,
 }: {
   project: ProjectWithMembers;
@@ -93,6 +95,8 @@ export function ProjectNav({
   onCreateProject: () => void;
   onInvite: () => void;
   onImport: () => void;
+  onPush: () => void;
+  onDeleteFile: (file: FileRecord) => void;
   onNavigate: () => void;
 }) {
   const online = useOnlineUsers();
@@ -136,7 +140,7 @@ export function ProjectNav({
                   {items.map((file) => {
                     const { dir, name } = splitPath(file.path);
                     return (
-                      <li key={file.id}>
+                      <li key={file.id} className="group/file relative">
                         <NavLink
                           to={`/projects/${project.id}/files/${file.id}`}
                           onClick={onNavigate}
@@ -153,6 +157,16 @@ export function ProjectNav({
                             {name}
                           </span>
                         </NavLink>
+                        {canEdit && (
+                          <button
+                            onClick={() => onDeleteFile(file)}
+                            aria-label={`Удалить ${file.path}`}
+                            title="Удалить файл"
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-faint opacity-0 transition hover:bg-bad/15 hover:text-bad focus-visible:opacity-100 group-hover/file:opacity-100"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </li>
                     );
                   })}
@@ -176,6 +190,12 @@ export function ProjectNav({
                 GitHub
               </Button>
             </div>
+          )}
+          {canEdit && files.length > 0 && (
+            <Button size="sm" className="w-full" onClick={onPush} title="Отправить изменения коммитом в репозиторий GitHub">
+              <GitCommitHorizontal size={14} />
+              Отправить в GitHub
+            </Button>
           )}
           <p className="flex items-center gap-2 px-1 text-xs text-muted">
             <span

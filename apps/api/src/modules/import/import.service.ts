@@ -34,8 +34,15 @@ export async function importFromGithub(
       type: file.type,
       language: file.language,
       yjsState: Buffer.from(textToYjsState(file.text)),
+      sourceSha: file.sha,
     })),
     skipDuplicates: true,
+  });
+
+  // The first repository an import comes from becomes the project's GitHub link, which "push" uses.
+  await prisma.project.updateMany({
+    where: { id: projectId, githubOwner: null },
+    data: { githubOwner: repo.owner, githubRepo: repo.repo, githubBranch: repo.ref },
   });
 
   return {

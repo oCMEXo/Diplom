@@ -179,3 +179,35 @@ test("a public GitHub repository can be imported into a new project", async ({ b
   await file.click();
   await expect(page.locator(".monaco-editor .view-lines")).toContainText("Hello World!");
 });
+
+test("a file can be deleted from the sidebar after confirmation", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Уборка");
+  await createFile(request, owner, project.id, "лишний.py");
+  const page = await openAs(browser, owner, `/projects/${project.id}`);
+
+  const file = page.getByRole("link", { name: "лишний.py" });
+  await expect(file).toBeVisible();
+  await file.hover();
+  await page.getByRole("button", { name: "Удалить лишний.py" }).click();
+  await page.getByRole("button", { name: "Удалить", exact: true }).click();
+  await expect(file).toHaveCount(0);
+});
+
+test("pushing to GitHub with a wrong token explains what went wrong", async ({ browser, request }) => {
+  const github = await request.get("https://api.github.com/zen").catch(() => null);
+  test.skip(!github?.ok(), "needs network access to GitHub");
+
+  const owner = await register(request, "Аня");
+  const page = await openAs(browser, owner, "/");
+  await page.getByRole("button", { name: "Новый проект" }).first().click();
+  await page.getByRole("radio", { name: "Из GitHub" }).click();
+  await page.getByLabel("Ссылка на репозиторий").fill("https://github.com/octocat/Hello-World");
+  await page.getByRole("button", { name: "Создать и импортировать" }).click();
+  await expect(page.getByRole("link", { name: "README" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Отправить в GitHub" }).click();
+  await page.getByLabel("Токен GitHub").fill("ghp_definitely_not_a_real_token_0000");
+  await page.getByRole("dialog").getByRole("button", { name: "Отправить", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("GitHub не принял токен", { timeout: 20_000 });
+});

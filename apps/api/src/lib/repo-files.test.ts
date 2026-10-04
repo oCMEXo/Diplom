@@ -24,20 +24,27 @@ describe("extractRepoFiles", () => {
     expect(files.find((f) => f.path === "src/app.py")?.text).toBe("print(1)");
   });
 
-  it("skips dependencies, build output, lockfiles and minified files", () => {
+  it("imports the repository as it is, apart from git internals, dependencies and OS litter", () => {
     const { files, skipped, skippedPaths } = extractRepoFiles(
       archive({
         "main.js": "1",
         "node_modules/lib/index.js": "x",
         ".git/config": "x",
-        "dist/bundle.js": "x",
+        ".DS_Store": "x",
+        "dist/bundle.js": "built",
         "package-lock.json": "{}",
-        "public/app.min.js": "x",
+        "public/app.min.js": "min",
       }),
     );
-    expect(files.map((f) => f.path)).toEqual(["main.js"]);
-    expect(skipped.ignored).toBe(5);
-    expect(skippedPaths).toEqual(["node_modules/", ".git/", "dist/", "package-lock.json", "public/app.min.js"]);
+    expect(files.map((f) => f.path)).toEqual(["dist/bundle.js", "main.js", "package-lock.json", "public/app.min.js"]);
+    expect(skipped.ignored).toBe(3);
+    expect(skippedPaths).toEqual(["node_modules/", ".git/", ".DS_Store"]);
+  });
+
+  it("records the git blob sha of the original bytes", () => {
+    const { files } = extractRepoFiles(archive({ "hello.txt": "hello\n" }));
+    // Same value as: printf 'hello\n' | git hash-object --stdin
+    expect(files[0]?.sha).toBe("ce013625030ba8dba906f756967f9e9ca394464a");
   });
 
   it("skips binary files and files with invalid UTF-8", () => {

@@ -7,7 +7,9 @@ import { cn } from "../lib/cn";
 import { RealtimeProvider } from "../lib/RealtimeContext";
 import { CreateFileDialog } from "../components/CreateFileDialog";
 import { CreateProjectDialog } from "../components/CreateProjectDialog";
+import { DeleteFileDialog } from "../components/DeleteFileDialog";
 import { ImportGithubDialog } from "../components/ImportGithubDialog";
+import { PushGithubDialog } from "../components/PushGithubDialog";
 import { InviteDialog } from "../components/InviteDialog";
 import { ProjectNav } from "../components/layout/ProjectNav";
 import { SidePanel } from "../components/layout/SidePanel";
@@ -37,6 +39,8 @@ export function ProjectPage() {
   const [creatingFile, setCreatingFile] = useState<FileType | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [deletingFile, setDeletingFile] = useState<FileRecord | null>(null);
 
   // The mobile drawers should not stay open after moving to another page.
   useEffect(() => setNavOpen(false), [location.pathname]);
@@ -92,6 +96,8 @@ export function ProjectPage() {
             onCreateProject={() => setCreatingProject(true)}
             onInvite={() => setInviteOpen(true)}
             onImport={() => setImporting(true)}
+            onPush={() => setPushing(true)}
+            onDeleteFile={setDeletingFile}
             onNavigate={() => setNavOpen(false)}
           />
         </div>
@@ -122,7 +128,20 @@ export function ProjectPage() {
       </div>
 
       {inviteOpen && <InviteDialog project={project} onClose={() => setInviteOpen(false)} />}
-      {importing && <ImportGithubDialog projectId={project.id} onClose={() => setImporting(false)} />}
+      {importing && <ImportGithubDialog project={project} onClose={() => setImporting(false)} />}
+      {pushing && <PushGithubDialog project={project} onClose={() => setPushing(false)} />}
+      {deletingFile && (
+        <DeleteFileDialog
+          projectId={project.id}
+          file={deletingFile}
+          onClose={() => setDeletingFile(null)}
+          onDeleted={() => {
+            const wasOpen = location.pathname.endsWith(`/files/${deletingFile.id}`);
+            setDeletingFile(null);
+            if (wasOpen) navigate(`/projects/${project.id}`);
+          }}
+        />
+      )}
       {creatingFile && (
         <CreateFileDialog
           initialType={creatingFile}
