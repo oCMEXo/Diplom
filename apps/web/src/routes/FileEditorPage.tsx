@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useOutletContext, useParams } from "react-router-dom";
+import { useLocation, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { Eye, LoaderCircle, Play } from "lucide-react";
 import { inferLanguage, toRunnableLanguage } from "@collab/shared";
 import { BoardEditor } from "../components/BoardEditor";
@@ -31,6 +31,10 @@ export function FileEditorPage() {
   const runRef = useRef(run);
   runRef.current = run;
   const [runError, setRunError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const revealLine = Number(searchParams.get("line")) || null;
+  const revealColumn = Number(searchParams.get("col")) || undefined;
 
   useEffect(() => {
     controller.current = null;
@@ -38,6 +42,12 @@ export function FileEditorPage() {
     setRunError(null);
     setStatus("connecting");
   }, [fileId]);
+
+  // A search result links here with ?line=…; the location key changes even when the same result is clicked twice.
+  useEffect(() => {
+    if (!activeController || !revealLine) return;
+    return activeController.revealLine(revealLine, revealColumn);
+  }, [activeController, revealLine, revealColumn, location.key]);
 
   useEffect(() => {
     if (projectId && fileId) rememberFile(projectId, fileId);

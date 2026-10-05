@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { GitBranch, Plus, Search, SquareTerminal, UserPlus } from "lucide-react";
+import { GitBranch, Plus, Search, SquareTerminal, TextSearch, UserPlus } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -82,6 +82,7 @@ export function ProjectNav({
   onDeleteFile,
   onRenameFile,
   onSearch,
+  onFindInFiles,
   onNavigate,
   onBranches,
   terminalOpen,
@@ -98,6 +99,7 @@ export function ProjectNav({
   onDeleteFile: (file: FileRecord) => void;
   onRenameFile: (file: FileRecord) => void;
   onSearch: () => void;
+  onFindInFiles: () => void;
   onNavigate: () => void;
   onBranches: () => void;
   /** Undefined when this server has no terminal. */
@@ -135,14 +137,22 @@ export function ProjectNav({
         </div>
 
         {files.length > 0 && (
-          <div className="px-3 pt-3">
+          <div className="flex gap-1.5 px-3 pt-3">
             <button
               onClick={onSearch}
-              className="flex h-8 w-full items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 text-left text-xs text-faint transition hover:border-faint hover:text-muted"
+              className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 text-left text-xs text-faint transition hover:border-faint hover:text-muted"
             >
               <Search size={14} />
               <span className="flex-1">Найти файл</span>
               <kbd className="rounded border border-line px-1 text-[10px]">Ctrl P</kbd>
+            </button>
+            <button
+              onClick={onFindInFiles}
+              aria-label="Поиск по содержимому"
+              title="Поиск по содержимому (Ctrl+Shift+F)"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-canvas text-faint transition hover:border-faint hover:text-muted"
+            >
+              <TextSearch size={14} />
             </button>
           </div>
         )}

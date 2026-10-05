@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { FileRecord, FileType, ProjectWithMembers } from "@collab/shared";
@@ -15,6 +15,7 @@ import { ImportGithubDialog } from "../components/ImportGithubDialog";
 import { PushGithubDialog } from "../components/PushGithubDialog";
 import { QuickOpen } from "../components/QuickOpen";
 import { RenameFileDialog } from "../components/RenameFileDialog";
+import { SearchPanel } from "../components/SearchPanel";
 import { InviteDialog } from "../components/InviteDialog";
 import { ProjectNav } from "../components/layout/ProjectNav";
 import { SidePanel } from "../components/layout/SidePanel";
@@ -32,6 +33,7 @@ export interface ProjectOutletContext {
 }
 
 const WIDE = "(min-width: 1280px)";
+const NAV_WIDE = "(min-width: 1024px)";
 
 /** When somebody opens another branch, everybody's file list follows. */
 function BranchWatcher({ projectId }: { projectId: string }) {
@@ -62,10 +64,19 @@ export function ProjectPage() {
   const [deletingFile, setDeletingFile] = useState<FileRecord | null>(null);
   const [renamingFile, setRenamingFile] = useState<FileRecord | null>(null);
   const [searching, setSearching] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [findFocus, setFindFocus] = useState(0);
   const [branching, setBranching] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const runMode = useRunMode();
   const terminalAvailable = !!runMode && runMode !== "off";
+
+  const openFind = useCallback(() => {
+    setFinding(true);
+    setFindFocus((value) => value + 1);
+    // On narrower screens the chat is a drawer too and would cover the search.
+    if (!window.matchMedia(WIDE).matches) setPanelOpen(false);
+  }, []);
 
   // Ctrl+P (or Ctrl+K) opens "go to file" instead of the browser's print dialog.
   useEffect(() => {
@@ -73,6 +84,11 @@ export function ProjectPage() {
       if ((event.ctrlKey || event.metaKey) && !event.altKey && ["p", "k"].includes(event.key.toLowerCase())) {
         event.preventDefault();
         setSearching(true);
+      }
+      // Ctrl+Shift+F searches inside the files, as in VS Code; the key code works in any keyboard layout.
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.code === "KeyF") {
+        event.preventDefault();
+        openFind();
       }
       // Ctrl+` opens and closes the terminal, as in VS Code.
       if (event.ctrlKey && event.code === "Backquote") {
@@ -82,7 +98,7 @@ export function ProjectPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [openFind]);
 
   // The mobile drawers should not stay open after moving to another page.
   useEffect(() => setNavOpen(false), [location.pathname]);
@@ -165,12 +181,35 @@ export function ProjectPage() {
             onDeleteFile={setDeletingFile}
             onRenameFile={setRenamingFile}
             onSearch={() => setSearching(true)}
+            onFindInFiles={() => {
+              setNavOpen(false);
+              openFind();
+            }}
             onNavigate={() => setNavOpen(false)}
             onBranches={() => setBranching(true)}
             terminalOpen={terminalOpen}
             onToggleTerminal={terminalAvailable ? () => setTerminalOpen((open) => !open) : undefined}
           />
         </div>
+
+        {finding && (
+          <>
+            <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm animate-fade-in lg:hidden" onClick={() => setFinding(false)} />
+            <aside className="fixed inset-y-0 left-0 z-40 w-80 max-w-[90vw] shrink-0 border-r border-line animate-slide-in lg:static lg:z-auto">
+              <SearchPanel
+                projectId={project.id}
+                files={files}
+                focusSignal={findFocus}
+                onClose={() => setFinding(false)}
+                onOpen={(fileId, match) => {
+                  // On a phone the panel covers the editor, so it steps aside once a result is chosen.
+                  if (!window.matchMedia(NAV_WIDE).matches) setFinding(false);
+                  navigate(`/projects/${project.id}/files/${fileId}?line=${match.line}&col=${match.column}`);
+                }}
+              />
+            </aside>
+          </>
+        )}
 
         <main className="flex min-w-0 flex-1 flex-col">
           <Outlet

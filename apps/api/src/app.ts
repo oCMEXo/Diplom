@@ -24,6 +24,7 @@ import { importRoutes } from "./modules/import/import.routes.js";
 import { githubRoutes } from "./modules/github/github.routes.js";
 import { branchesRoutes } from "./modules/branches/branches.routes.js";
 import { terminalRoutes } from "./modules/terminal/terminal.routes.js";
+import { searchRoutes } from "./modules/search/search.routes.js";
 import { closeTerminalTickets } from "./lib/terminal-tickets.js";
 import { codeMatches, runMode } from "./lib/run-access.js";
 import { featuresSchema, runAccessSchema } from "@collab/shared";
@@ -116,6 +117,7 @@ export async function buildApp(options: AppOptions = {}) {
   await app.register(projectsRoutes, { prefix: "/projects" });
   await app.register(filesRoutes, { prefix: "/projects" });
   await app.register(inviteRoutes);
+  await app.register(searchRoutes, { prefix: "/projects" });
   await app.register(messagesRoutes, { prefix: "/projects" });
   if (runEnabled) {
     await app.register(runsRoutes, { prefix: "/projects", accessCode: runAccessCode });

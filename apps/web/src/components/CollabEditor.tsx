@@ -12,7 +12,12 @@ export interface EditorController {
   /** Calls the handler with the full text now and after every change (local or remote). */
   subscribe: (handler: (text: string) => void) => () => void;
   setErrorLine: (line: number | null) => void;
+  /** Puts the cursor at the line (and column) and scrolls it into view; returns a function that cancels a pending move. */
+  revealLine: (line: number, column?: number) => () => void;
 }
+
+/** Below this height (px) the editor is still being laid out, so scrolling it would not stick. */
+const MIN_REVEAL_HEIGHT = 100;
 
 function languageFor(language: string | null): string {
   return language ?? "plaintext";
@@ -79,6 +84,39 @@ export function CollabEditor({
               ]
             : [],
         ),
+      revealLine: (line, column = 1) => {
+        const move = () => {
+          if (model.isDisposed()) return true; // the page already moved on to another file
+          if (model.getLineCount() < line) return false;
+          const position = { lineNumber: line, column };
+          const reveal = () => editor.revealPositionInCenter(position, monaco.editor.ScrollType.Immediate);
+          editor.setPosition(position);
+          editor.focus();
+          // Just after mounting the editor has no size yet and a scroll made then is lost: wait for the layout.
+          if (editor.getLayoutInfo().height >= MIN_REVEAL_HEIGHT) {
+            reveal();
+          } else {
+            const sized = editor.onDidLayoutChange((layout) => {
+              if (layout.height < MIN_REVEAL_HEIGHT) return;
+              sized.dispose();
+              reveal();
+            });
+          }
+          return true;
+        };
+        if (move()) return () => {};
+        // The text may still be arriving from the server: wait until the line exists.
+        let waiting = true;
+        const stop = () => {
+          if (waiting) yText.unobserve(listener); // Yjs complains about removing a handler twice
+          waiting = false;
+        };
+        const listener = () => {
+          if (move()) stop();
+        };
+        yText.observe(listener);
+        return stop;
+      },
     });
   };
 
