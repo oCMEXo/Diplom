@@ -266,6 +266,7 @@ async function main() {
     TRUST_PROXY: "true",
     RATE_LIMIT_PER_MINUTE: "600",
     RATE_LIMIT_AUTH_PER_MINUTE: "20",
+    COLLAB_URL: `http://127.0.0.1:${COLLAB_PORT}`,
   });
   startService("collab", ["--filter", "@collab/collab", "exec", "tsx", "src/server.ts"], {
     ...common,

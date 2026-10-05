@@ -50,7 +50,8 @@ export function ProjectHeader({
       <IconButton label="Меню проекта" onClick={shell.openNav} className="lg:hidden">
         <Menu size={19} />
       </IconButton>
-      <div className="flex min-w-0 items-center gap-2.5">
+      {/* The name must stay readable however many buttons the page puts on the right. */}
+      <div className="flex min-w-[6rem] items-center gap-2.5">
         {icon}
         <h2 className="truncate text-sm font-semibold">{title}</h2>
         {badge}

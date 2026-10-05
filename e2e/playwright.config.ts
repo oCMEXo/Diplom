@@ -40,6 +40,7 @@ export default defineConfig({
         DATABASE_URL: database,
         REDIS_URL: redis,
         CORS_ORIGIN: `http://localhost:${WEB_PORT}`,
+        COLLAB_URL: `http://localhost:${COLLAB_PORT}`,
         ...secrets,
       },
     },

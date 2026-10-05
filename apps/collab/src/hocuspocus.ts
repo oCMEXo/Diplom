@@ -1,11 +1,13 @@
 import { Hocuspocus, type Configuration } from "@hocuspocus/server";
 import { resolveFileAccess } from "./lib/access.js";
 import { databaseExtension } from "./persistence.js";
+import { restoreExtension } from "./restore.js";
+import { forgetFile } from "./versions.js";
 
 /** The sync server as it runs in production; tests start the same one on a free port. */
 export function createHocuspocus(configuration: Partial<Configuration> = {}) {
   return new Hocuspocus({
-    extensions: [databaseExtension],
+    extensions: [databaseExtension, restoreExtension],
     // Snapshots reach the database within a few seconds, which is what "push to GitHub" reads.
     debounce: 1000,
     maxDebounce: 3000,
@@ -25,6 +27,9 @@ export function createHocuspocus(configuration: Partial<Configuration> = {}) {
         projectId: access.projectId,
         role: access.role,
       };
+    },
+    async afterUnloadDocument({ documentName }) {
+      forgetFile(documentName);
     },
     ...configuration,
   });
