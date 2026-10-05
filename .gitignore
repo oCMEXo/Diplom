@@ -18,3 +18,7 @@ apps/*/dist/
 # Playwright
 e2e/test-results/
 e2e/playwright-report/
+
+# Local test host (secrets, web build, logs, downloaded tunnel binary)
+infra/local-host/.state/
+infra/local-host/bin/

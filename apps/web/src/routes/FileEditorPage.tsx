@@ -12,6 +12,7 @@ import { ProjectHeader, type SyncStatus } from "../components/layout/ProjectHead
 import { Button } from "../components/ui/Button";
 import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
+import { RUN_ENABLED } from "../lib/features";
 import { rememberFile } from "../lib/last-file";
 import { useRun } from "../lib/RealtimeContext";
 import type { ProjectOutletContext } from "./ProjectPage";
@@ -93,7 +94,7 @@ export function FileEditorPage() {
 
   const isDoc = file.type === "doc";
   const language = isDoc ? "markdown" : (file.language ?? inferLanguage(file.path));
-  const runnable = !isDoc && toRunnableLanguage(language) !== null;
+  const runnable = RUN_ENABLED && !isDoc && toRunnableLanguage(language) !== null;
   const running = run?.status === "running";
 
   async function startRun() {

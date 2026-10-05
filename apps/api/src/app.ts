@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import rateLimit from "@fastify/rate-limit";
 import {
   jsonSchemaTransform,
   serializerCompiler,
@@ -22,8 +23,20 @@ import { importRoutes } from "./modules/import/import.routes.js";
 import { githubRoutes } from "./modules/github/github.routes.js";
 import { closeRunQueue } from "./lib/queue.js";
 
-export async function buildApp() {
-  const app = Fastify({ logger: true });
+export interface AppOptions {
+  /** Requests per minute per address (0 = unlimited) and the stricter limit for the auth endpoints. */
+  rateLimit?: { perMinute: number; authPerMinute: number };
+  trustProxy?: boolean;
+  runEnabled?: boolean;
+}
+
+/** Endpoints that cost a password hash or create an account: the ones worth limiting harder. */
+const AUTH_LIMITED_URLS = new Set(["/auth/register", "/auth/login", "/auth/guest", "/auth/refresh"]);
+
+export async function buildApp(options: AppOptions = {}) {
+  const limits = options.rateLimit ?? { perMinute: env.RATE_LIMIT_PER_MINUTE, authPerMinute: env.RATE_LIMIT_AUTH_PER_MINUTE };
+  const runEnabled = options.runEnabled ?? env.RUN_ENABLED;
+  const app = Fastify({ logger: true, trustProxy: options.trustProxy ?? env.TRUST_PROXY });
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -43,6 +56,23 @@ export async function buildApp() {
   });
 
   await app.register(cors, { origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()), credentials: true });
+  if (limits.perMinute > 0) {
+    const authMax = limits.authPerMinute > 0 ? limits.authPerMinute : limits.perMinute;
+    // The plugin reads each route's own limit when the route is added, so this hook must come first.
+    app.addHook("onRoute", (route) => {
+      if (AUTH_LIMITED_URLS.has(route.url) && route.method === "POST") {
+        route.config = { ...route.config, rateLimit: { max: authMax, timeWindow: "1 minute" } };
+      }
+    });
+    await app.register(rateLimit, {
+      max: limits.perMinute,
+      timeWindow: "1 minute",
+      errorResponseBuilder: (_request, context) => ({
+        statusCode: 429,
+        message: `Слишком много запросов. Подождите ${Math.ceil(context.ttl / 1000)} с и попробуйте снова.`,
+      }),
+    });
+  }
   await app.register(websocket);
   await app.register(authenticatePlugin);
 
@@ -66,7 +96,14 @@ export async function buildApp() {
   await app.register(filesRoutes, { prefix: "/projects" });
   await app.register(inviteRoutes);
   await app.register(messagesRoutes, { prefix: "/projects" });
-  await app.register(runsRoutes, { prefix: "/projects" });
+  if (runEnabled) {
+    await app.register(runsRoutes, { prefix: "/projects" });
+  } else {
+    // This server does not run visitors' programs; say so instead of queueing a job nobody will take.
+    app.post("/projects/:projectId/files/:fileId/run", { preHandler: [app.authenticate] }, async () => {
+      throw new AppError("Запуск кода на этом сервере выключен", 403);
+    });
+  }
   await app.register(importRoutes, { prefix: "/projects" });
   await app.register(githubRoutes, { prefix: "/projects" });
   await app.register(realtimeRoutes);

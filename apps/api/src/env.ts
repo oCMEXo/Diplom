@@ -10,6 +10,20 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  /** Requests per minute per address; 0 turns the limit off (the default for development). */
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(0).default(0),
+  /** The stricter limit for sign-in, registration and guest entry; 0 means "same as the general one". */
+  RATE_LIMIT_AUTH_PER_MINUTE: z.coerce.number().int().min(0).default(0),
+  /** Behind a proxy or tunnel the real client address is in X-Forwarded-For. */
+  TRUST_PROXY: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /** "false" turns off running visitors' code (no queue, no runner needed). */
+  RUN_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
 });
 
 export const env = envSchema.parse(process.env);

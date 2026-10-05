@@ -4,8 +4,10 @@ import { startRunEventRelay } from "./lib/run-events-relay.js";
 
 const app = await buildApp();
 
-const stopRelay = await startRunEventRelay(env.REDIS_URL, (error) => app.log.error(error));
-app.addHook("onClose", stopRelay);
+if (env.RUN_ENABLED) {
+  const stopRelay = await startRunEventRelay(env.REDIS_URL, (error) => app.log.error(error));
+  app.addHook("onClose", stopRelay);
+}
 
 app
   .listen({ port: env.PORT, host: env.HOST })

@@ -1,0 +1,26 @@
+{
+  "name": "@collab/local-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Runs the platform on this computer behind one address and, optionally, a public tunnel",
+  "scripts": {
+    "start": "tsx src/start.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "sirv": "^2.0.4"
+  },
+  "devDependencies": {
+    "@types/http-proxy": "^1.17.15",
+    "@types/node": "^22.9.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4",
+    "ws": "^8.18.0"
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { colorForUser } from "./colors";
+import { wsUrl } from "./endpoints";
 import { tokenStore } from "./tokenStore";
 
 const COLLAB_URL = import.meta.env.VITE_COLLAB_URL;
@@ -18,7 +19,7 @@ export function useCollabDoc(fileId: string) {
     if (!auth) return;
 
     const next = new HocuspocusProvider({
-      url: COLLAB_URL,
+      url: wsUrl(COLLAB_URL, window.location.origin),
       name: fileId,
       token: auth.tokens.accessToken,
       onStatus: ({ status: value }) =>

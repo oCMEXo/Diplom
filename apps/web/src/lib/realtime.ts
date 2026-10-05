@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { realtimeEventSchema, type RealtimeEvent } from "@collab/shared";
 import { api, API_URL } from "./api";
+import { wsUrl } from "./endpoints";
 import { tokenStore } from "./tokenStore";
 
 const CLOSE_UNAUTHORIZED = 4401;
@@ -25,8 +26,7 @@ export function useProjectEvents(projectId: string, onEvent: (event: RealtimeEve
       if (disposed || !auth) return;
       setStatus("connecting");
 
-      const url = new URL("/ws", API_URL);
-      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      const url = new URL(wsUrl(API_URL, window.location.origin, "/ws"));
       url.searchParams.set("projectId", projectId);
       url.searchParams.set("token", auth.tokens.accessToken);
 

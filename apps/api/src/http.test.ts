@@ -104,4 +104,63 @@ describe("HTTP behaviour a person sees", () => {
     expect(invalid.statusCode).toBe(400);
     expect(invalid.json().message).toMatch(/Проверьте введённые данные/);
   });
+
+  it("limits how often one address can try to sign in, and tells them to wait", async () => {
+    const app = await buildApp({ rateLimit: { perMinute: 50, authPerMinute: 2 }, trustProxy: true });
+    try {
+      const attempt = (ip: string) =>
+        app.inject({
+          method: "POST",
+          url: "/auth/login",
+          headers: { "x-forwarded-for": ip },
+          payload: { email: "nobody@test.local", password: "wrong-password" },
+        });
+
+      expect((await attempt("203.0.113.7")).statusCode).toBe(401);
+      expect((await attempt("203.0.113.7")).statusCode).toBe(401);
+      const blocked = await attempt("203.0.113.7");
+      expect(blocked.statusCode).toBe(429);
+      expect(blocked.json().message).toMatch(/Слишком много запросов/);
+
+      // Another visitor behind the same proxy is counted separately.
+      expect((await attempt("203.0.113.8")).statusCode).toBe(401);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("does not limit anything unless a limit is configured", async () => {
+    const app = await buildApp({ rateLimit: { perMinute: 0, authPerMinute: 0 } });
+    try {
+      for (let i = 0; i < 8; i += 1) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/auth/login",
+          payload: { email: "nobody@test.local", password: "wrong-password" },
+        });
+        expect(response.statusCode).toBe(401);
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("refuses to run code when the server has running switched off", async () => {
+    const owner = await registerOwner("Аня");
+    const response = await withApp(async () => {
+      const app = await buildApp({ runEnabled: false });
+      try {
+        return await app.inject({
+          method: "POST",
+          url: `/projects/${randomUUID()}/files/${randomUUID()}/run`,
+          headers: { authorization: `Bearer ${owner.tokens.accessToken}` },
+          payload: { code: "print(1)" },
+        });
+      } finally {
+        await app.close();
+      }
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json().message).toBe("Запуск кода на этом сервере выключен");
+  });
 });

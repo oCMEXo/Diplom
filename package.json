@@ -12,6 +12,7 @@
     "dev:collab": "pnpm --filter @collab/collab dev",
     "dev:runner": "pnpm --filter @collab/runner dev",
     "dev:web": "pnpm --filter @collab/web dev",
+    "host:test": "pnpm --filter @collab/local-host start",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
