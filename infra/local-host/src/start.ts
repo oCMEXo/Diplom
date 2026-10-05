@@ -271,6 +271,7 @@ async function main() {
     ...common,
     PORT: String(COLLAB_PORT),
     HOST: "127.0.0.1",
+    REDIS_URL,
   });
   if (runOn) {
     say("• Запускаем песочницу для кода и терминала…");

@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { realtimeEventSchema, type RealtimeEvent } from "@collab/shared";
+import {
+  accessChangeReasonSchema,
+  CLOSE_ACCESS_REVOKED,
+  realtimeEventSchema,
+  type AccessChangeReason,
+  type RealtimeEvent,
+} from "@collab/shared";
 import { api, API_URL } from "./api";
 import { wsUrl } from "./endpoints";
 import { tokenStore } from "./tokenStore";
@@ -10,10 +16,16 @@ const MAX_BACKOFF_MS = 5000;
 
 export type RealtimeStatus = "connecting" | "open" | "closed";
 
-export function useProjectEvents(projectId: string, onEvent: (event: RealtimeEvent) => void) {
+export function useProjectEvents(
+  projectId: string,
+  onEvent: (event: RealtimeEvent) => void,
+  onRevoked?: (reason: AccessChangeReason) => void,
+) {
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
   const handlerRef = useRef(onEvent);
   handlerRef.current = onEvent;
+  const revokedRef = useRef(onRevoked);
+  revokedRef.current = onRevoked;
 
   useEffect(() => {
     let socket: WebSocket | null = null;
@@ -47,6 +59,12 @@ export function useProjectEvents(projectId: string, onEvent: (event: RealtimeEve
         if (disposed) return;
         setStatus("closed");
         if (event.code === CLOSE_FORBIDDEN) return;
+        // Removed from the project (or it is gone) while it was open: no point in reconnecting.
+        if (event.code === CLOSE_ACCESS_REVOKED) {
+          const reason = accessChangeReasonSchema.safeParse(event.reason);
+          revokedRef.current?.(reason.success ? reason.data : "removed");
+          return;
+        }
         if (event.code === CLOSE_UNAUTHORIZED) {
           await api.get("/auth/me").catch(() => undefined);
         }

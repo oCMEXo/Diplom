@@ -27,10 +27,17 @@ export const projectBranchEventSchema = z.object({
   branch: z.string(),
 });
 
+/** Somebody's role changed or somebody left: the member list (and maybe my own rights) changed. */
+export const projectMembersEventSchema = z.object({
+  type: z.literal("project.members"),
+  projectId: z.string().uuid(),
+});
+
 export const realtimeEventSchema = z.union([
   messageCreatedEventSchema,
   presenceEventSchema,
   projectBranchEventSchema,
+  projectMembersEventSchema,
   runEventSchema,
 ]);
 export type RealtimeEvent = z.infer<typeof realtimeEventSchema>;

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, LogOut, Link as LinkIcon, Plus, Trash2 } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ArrowRight, LogOut, Link as LinkIcon, Plus, Trash2, X } from "lucide-react";
 import type { Project } from "@collab/shared";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -23,6 +23,11 @@ function projectCode(value: string) {
 export function ProjectsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Set when a project was taken away while open (removed, deleted); shown once, until dismissed.
+  const [notice, setNotice] = useState<string | null>(
+    () => (location.state as { notice?: string } | null)?.notice ?? null,
+  );
   const [creating, setCreating] = useState(false);
   const [link, setLink] = useState("");
   const [removing, setRemoving] = useState<Project | null>(null);
@@ -48,6 +53,15 @@ export function ProjectsPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-5 py-10">
+        {notice && (
+          <div role="status" className="mb-8 flex items-start gap-3 rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">
+            <p className="flex-1">{notice}</p>
+            <button onClick={() => setNotice(null)} aria-label="Скрыть" className="rounded p-0.5 transition hover:bg-bad/15">
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         <section className="mb-10 flex flex-wrap items-end justify-between gap-6">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Привет, {user?.name}</h1>

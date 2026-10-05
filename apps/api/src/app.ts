@@ -28,6 +28,7 @@ import { closeTerminalTickets } from "./lib/terminal-tickets.js";
 import { codeMatches, runMode } from "./lib/run-access.js";
 import { featuresSchema, runAccessSchema } from "@collab/shared";
 import { closeRunQueue } from "./lib/queue.js";
+import { closeAccessChanges } from "./lib/access-changes.js";
 
 export interface AppOptions {
   /** Requests per minute per address (0 = unlimited) and the stricter limit for the auth endpoints. */
@@ -135,6 +136,7 @@ export async function buildApp(options: AppOptions = {}) {
 
   app.addHook("onClose", closeRunQueue);
   app.addHook("onClose", closeTerminalTickets);
+  app.addHook("onClose", closeAccessChanges);
 
   return app;
 }

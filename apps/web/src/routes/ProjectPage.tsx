@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
-import type { FileRecord, FileType, ProjectWithMembers } from "@collab/shared";
+import type { AccessChangeReason, FileRecord, FileType, ProjectWithMembers } from "@collab/shared";
 import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
 import { RealtimeProvider, useRealtimeEvents } from "../lib/RealtimeContext";
@@ -44,6 +44,22 @@ function BranchWatcher({ projectId }: { projectId: string }) {
     if (location.pathname.includes("/files/")) navigate(`/projects/${projectId}`);
   });
   return null;
+}
+
+/** A role changed or somebody left: refresh the member list and my own rights in the project. */
+function MembersWatcher({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient();
+  useRealtimeEvents((event) => {
+    if (event.type === "project.members") queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+  });
+  return null;
+}
+
+/** What the projects page says after the server took the open project away. */
+function revokedNotice(reason: AccessChangeReason, projectName: string) {
+  if (reason === "deleted") return `Проект «${projectName}» удалён владельцем.`;
+  if (reason === "left") return `Вы покинули проект «${projectName}».`;
+  return `Вас удалили из проекта «${projectName}».`;
 }
 
 export function ProjectPage() {
@@ -141,8 +157,17 @@ export function ProjectPage() {
   };
 
   return (
-    <RealtimeProvider key={project.id} projectId={project.id}>
+    <RealtimeProvider
+      key={project.id}
+      projectId={project.id}
+      onRevoked={(reason) => {
+        queryClient.removeQueries({ queryKey: ["project", project.id] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        navigate("/", { replace: true, state: { notice: revokedNotice(reason, project.name) } });
+      }}
+    >
       <BranchWatcher projectId={project.id} />
+      <MembersWatcher projectId={project.id} />
       <div className="flex h-screen overflow-hidden">
         {navOpen && (
           <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm animate-fade-in lg:hidden" onClick={() => setNavOpen(false)} />

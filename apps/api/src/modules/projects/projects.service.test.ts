@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { Redis } from "ioredis";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@collab/db";
+import { ACCESS_CHANGES_CHANNEL, type AccessChange } from "@collab/shared";
+import { env } from "../../env.js";
+import { closeAccessChanges } from "../../lib/access-changes.js";
 import {
   createProject,
   deleteProject,
@@ -214,5 +218,87 @@ describe("projects.service", () => {
 
     const updated = await updateInviteRole(owner.id, p.id, "viewer");
     expect(updated.inviteRole).toBe("viewer");
+  });
+
+  describe("telling open connections that access changed", () => {
+    let subscriber: Redis;
+    const published: AccessChange[] = [];
+
+    beforeAll(async () => {
+      subscriber = new Redis(env.REDIS_URL);
+      subscriber.on("message", (_channel, raw) => published.push(JSON.parse(raw)));
+      await subscriber.subscribe(ACCESS_CHANGES_CHANNEL);
+    });
+
+    afterAll(async () => {
+      await closeAccessChanges();
+      subscriber.disconnect();
+    });
+
+    /** Other test files publish too, so only this project's messages count. */
+    async function changesFor(projectId: string, count: number) {
+      const started = Date.now();
+      for (;;) {
+        const mine = published.filter((change) => change.projectId === projectId);
+        if (mine.length >= count || Date.now() - started > 3000) return mine;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+    }
+
+    it("announces a removed member and one who left", async () => {
+      const owner = await user();
+      const removed = await user();
+      const leaver = await user();
+      const p = await project(owner.id);
+      await inviteMember(owner.id, p.id, { email: removed.email, role: "editor" });
+      await inviteMember(owner.id, p.id, { email: leaver.email, role: "editor" });
+
+      await removeMember(owner.id, p.id, removed.id);
+      await removeMember(leaver.id, p.id, leaver.id);
+
+      expect(await changesFor(p.id, 2)).toEqual([
+        { projectId: p.id, userId: removed.id, reason: "removed" },
+        { projectId: p.id, userId: leaver.id, reason: "left" },
+      ]);
+    });
+
+    it("announces a new role, but not a role that stayed the same", async () => {
+      const owner = await user();
+      const member = await user();
+      const p = await project(owner.id);
+      await inviteMember(owner.id, p.id, { email: member.email, role: "editor" });
+
+      await updateMemberRole(owner.id, p.id, member.id, "editor");
+      await updateMemberRole(owner.id, p.id, member.id, "viewer");
+      await removeMember(owner.id, p.id, member.id);
+
+      expect(await changesFor(p.id, 2)).toEqual([
+        { projectId: p.id, userId: member.id, reason: "role" },
+        { projectId: p.id, userId: member.id, reason: "removed" },
+      ]);
+    });
+
+    it("announces a deleted project for everybody in it", async () => {
+      const owner = await user();
+      const p = await project(owner.id);
+
+      await deleteProject(owner.id, p.id);
+
+      expect(await changesFor(p.id, 1)).toEqual([{ projectId: p.id, reason: "deleted" }]);
+    });
+
+    it("announces nothing when the change is refused", async () => {
+      const owner = await user();
+      const editor = await user();
+      const p = await project(owner.id);
+      await inviteMember(owner.id, p.id, { email: editor.email, role: "editor" });
+
+      await expect(removeMember(editor.id, p.id, owner.id)).rejects.toMatchObject({ statusCode: 403 });
+      await expect(deleteProject(editor.id, p.id)).rejects.toMatchObject({ statusCode: 403 });
+      // Messages arrive in order, so once this one is here the refused ones would have been too.
+      await updateMemberRole(owner.id, p.id, editor.id, "viewer");
+
+      expect(await changesFor(p.id, 1)).toEqual([{ projectId: p.id, userId: editor.id, reason: "role" }]);
+    });
   });
 });
