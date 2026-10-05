@@ -1,5 +1,6 @@
 export * from "./constants.js";
 export * from "./language.js";
+export * from "./schemas/access.js";
 export * from "./schemas/auth.js";
 export * from "./schemas/error.js";
 export * from "./schemas/file.js";

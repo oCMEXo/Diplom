@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { PresenceUser, RealtimeEvent, RunStatus } from "@collab/shared";
+import type { AccessChangeReason, PresenceUser, RealtimeEvent, RunStatus } from "@collab/shared";
 import { useProjectEvents, type RealtimeStatus } from "./realtime";
 
 export interface RunState {
@@ -82,7 +82,16 @@ function runsReducer(state: RunsByFile, event: RealtimeEvent): RunsByFile {
   }
 }
 
-export function RealtimeProvider({ projectId, children }: { projectId: string; children: ReactNode }) {
+export function RealtimeProvider({
+  projectId,
+  onRevoked,
+  children,
+}: {
+  projectId: string;
+  /** The server closed the connection because access to the project was taken away. */
+  onRevoked?: (reason: AccessChangeReason) => void;
+  children: ReactNode;
+}) {
   const handlers = useRef(new Set<Handler>());
   const [runs, dispatchRun] = useReducer(runsReducer, {});
   const [online, setOnline] = useState<PresenceUser[]>([]);
@@ -93,7 +102,7 @@ export function RealtimeProvider({ projectId, children }: { projectId: string; c
     handlers.current.forEach((handler) => handler(event));
   }, []);
 
-  const status = useProjectEvents(projectId, onEvent);
+  const status = useProjectEvents(projectId, onEvent, onRevoked);
 
   const subscribe = useCallback((handler: Handler) => {
     handlers.current.add(handler);

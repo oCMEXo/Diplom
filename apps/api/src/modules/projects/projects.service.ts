@@ -3,6 +3,7 @@ import type { CreateProjectInput, InviteMemberInput, InviteRole, ProjectRole } f
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
 import { generateInviteCode } from "../../lib/invite-code.js";
+import { announceAccessChange } from "../../lib/access-changes.js";
 
 interface ProjectLike {
   id: string;
@@ -77,6 +78,7 @@ export async function getProject(userId: string, projectId: string) {
 export async function deleteProject(userId: string, projectId: string) {
   await requireProjectRole(projectId, userId, "owner");
   await prisma.project.delete({ where: { id: projectId } });
+  await announceAccessChange({ projectId, reason: "deleted" });
 }
 
 export async function inviteMember(
@@ -123,10 +125,14 @@ export async function updateMemberRole(
     throw new AppError("Роль владельца изменить нельзя", 400);
   }
 
+  if (target.role === role) return;
+
   await prisma.projectMember.update({
     where: { projectId_userId: { projectId, userId: targetUserId } },
     data: { role },
   });
+  // Open documents keep the role they connected with; reconnecting gives them the new one.
+  await announceAccessChange({ projectId, userId: targetUserId, reason: "role" });
 }
 
 export async function removeMember(
@@ -154,6 +160,11 @@ export async function removeMember(
 
   await prisma.projectMember.delete({
     where: { projectId_userId: { projectId, userId: targetUserId } },
+  });
+  await announceAccessChange({
+    projectId,
+    userId: targetUserId,
+    reason: requesterId === targetUserId ? "left" : "removed",
   });
 }
 

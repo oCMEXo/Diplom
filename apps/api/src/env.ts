@@ -19,6 +19,8 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  /** How many days a deleted file stays in the trash before it is deleted for good. */
+  TRASH_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   /** "false" turns off running visitors' code (no queue, no runner needed). */
   RUN_ENABLED: z
     .enum(["true", "false"])

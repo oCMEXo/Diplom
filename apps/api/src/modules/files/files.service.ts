@@ -4,6 +4,9 @@ import type { CreateFileInput, UpdateFileInput } from "@collab/shared";
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
 import { activeBranch } from "../../lib/branch.js";
+import { env } from "../../env.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function toFileDto(file: {
   id: string;
@@ -45,7 +48,28 @@ export async function listTrash(userId: string, projectId: string) {
   return files.map((file) => ({
     ...toFileDto({ ...file, path: file.trashedPath ?? file.path }),
     deletedAt: file.deletedAt!.toISOString(),
+    purgeAt: new Date(file.deletedAt!.getTime() + env.TRASH_RETENTION_DAYS * DAY_MS).toISOString(),
   }));
+}
+
+/**
+ * Deletes for good what has been in the trash longer than `days` (every project, every branch).
+ * Goes in batches so one pass never holds a huge `IN (...)` or a long lock; returns how many went.
+ */
+export async function purgeExpiredTrash(now = new Date(), days = env.TRASH_RETENTION_DAYS, batchSize = 500) {
+  const cutoff = new Date(now.getTime() - days * DAY_MS);
+  let purged = 0;
+  for (;;) {
+    const batch = await prisma.file.findMany({
+      where: { deletedAt: { lt: cutoff } },
+      select: { id: true },
+      take: batchSize,
+    });
+    if (batch.length === 0) return purged;
+    const { count } = await prisma.file.deleteMany({ where: { id: { in: batch.map((file) => file.id) } } });
+    purged += count;
+    if (batch.length < batchSize) return purged;
+  }
 }
 
 export async function createFile(userId: string, projectId: string, input: CreateFileInput) {

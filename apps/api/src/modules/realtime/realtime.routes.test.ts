@@ -3,10 +3,11 @@ import type { AddressInfo } from "node:net";
 import WebSocket from "ws";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@collab/db";
+import { CLOSE_ACCESS_REVOKED } from "@collab/shared";
 import { buildApp } from "../../app.js";
 import { signAccessToken } from "../../lib/jwt.js";
 import { hub } from "../../lib/hub.js";
-import { createProject } from "../projects/projects.service.js";
+import { createProject, removeMember } from "../projects/projects.service.js";
 import { createMessage } from "../messages/messages.service.js";
 import { CLOSE_FORBIDDEN, CLOSE_UNAUTHORIZED } from "./realtime.routes.js";
 
@@ -127,6 +128,29 @@ describe("GET /ws", () => {
     expect(hub.presence(p.id)).toHaveLength(1);
     tabA.close();
     tabB.close();
+  });
+
+  it("closes a removed member's open connection at once and keeps everybody else's", async () => {
+    const owner = await user();
+    const member = await user();
+    const p = await createProject(owner.id, { name: "removal project" });
+    projectIds.push(p.id);
+    await prisma.projectMember.create({ data: { projectId: p.id, userId: member.id, role: "editor" } });
+
+    const ownerWs = await connect(`${base}?projectId=${p.id}&token=${owner.token}`);
+    const memberWs = await connect(`${base}?projectId=${p.id}&token=${member.token}`);
+    const closed = new Promise<{ code: number; reason: string }>((resolve) =>
+      memberWs.once("close", (code, reason) => resolve({ code, reason: reason.toString() })),
+    );
+    const membersChanged = nextEvent(ownerWs, "project.members");
+
+    await removeMember(owner.id, p.id, member.id);
+
+    expect(await closed).toEqual({ code: CLOSE_ACCESS_REVOKED, reason: "removed" });
+    await membersChanged;
+    expect(ownerWs.readyState).toBe(WebSocket.OPEN);
+    expect(hub.presence(p.id).map((u) => u.id)).toEqual([owner.id]);
+    ownerWs.close();
   });
 
   it("rejects a bad token", async () => {

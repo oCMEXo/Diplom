@@ -48,7 +48,12 @@ export default defineConfig({
       cwd: "..",
       port: COLLAB_PORT,
       reuseExistingServer: !process.env.CI,
-      env: { PORT: String(COLLAB_PORT), DATABASE_URL: database, JWT_ACCESS_SECRET: secrets.JWT_ACCESS_SECRET },
+      env: {
+        PORT: String(COLLAB_PORT),
+        DATABASE_URL: database,
+        REDIS_URL: redis,
+        JWT_ACCESS_SECRET: secrets.JWT_ACCESS_SECRET,
+      },
     },
     {
       command: `pnpm --filter @collab/web exec vite --port ${WEB_PORT} --strictPort`,

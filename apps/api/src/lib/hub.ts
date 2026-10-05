@@ -2,6 +2,7 @@ import type { PresenceUser, RealtimeEvent } from "@collab/shared";
 
 export interface HubSocket {
   send(data: string): void;
+  close?(code: number, reason: string): void;
   readyState?: number;
 }
 
@@ -37,6 +38,25 @@ class Hub {
         socket.send(payload);
       }
     }
+  }
+
+  /** Closes one user's connections to the project (everybody's when `userId` is null); returns how many. */
+  disconnect(projectId: string, userId: string | null, code: number, reason: string) {
+    const room = this.rooms.get(projectId);
+    if (!room) return 0;
+    let closed = 0;
+    let presenceChanged = false;
+    for (const [socket, user] of room) {
+      if (userId !== null && user?.id !== userId) continue;
+      // Forgotten before closing, so nothing else reaches it while the close handshake runs.
+      room.delete(socket);
+      socket.close?.(code, reason);
+      closed += 1;
+      if (user) presenceChanged = true;
+    }
+    if (room.size === 0) this.rooms.delete(projectId);
+    else if (presenceChanged) this.broadcastPresence(projectId);
+    return closed;
   }
 
   /** Distinct users with at least one open connection to the project. */

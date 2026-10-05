@@ -2,7 +2,9 @@
 
 Hocuspocus WebSocket server (ADR-002): authenticates connections with the
 API's access token, checks project membership, and persists Yjs document
-snapshots to PostgreSQL (`files.yjs_state`) through `@collab/db`.
+snapshots to PostgreSQL (`files.yjs_state`) through `@collab/db`. Listens on
+Redis (`REDIS_URL`, channel `access-changes`) so that a member removed or
+demoted by the API loses their open documents at once.
 
 See [docs/websocket-protocol.md](../../docs/websocket-protocol.md) for the
 connection contract.

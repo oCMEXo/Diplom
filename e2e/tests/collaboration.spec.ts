@@ -328,6 +328,28 @@ test("the owner can change a member's role and remove them", async ({ browser, r
   await expect(page.getByText("Влад", { exact: true })).toHaveCount(0);
 });
 
+test("a member demoted or removed while working sees it at once", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Живые права");
+  const file = await createFile(request, owner, project.id, "main.py");
+  const visitor = await guest(request, "Влад");
+  await join(request, visitor, project.inviteCode);
+
+  const guestPage = await openAs(browser, visitor, `/projects/${project.id}/files/${file.id}`);
+  await expect(guestPage.getByText("Синхронизировано")).toBeVisible();
+
+  const ownerPage = await openAs(browser, owner, `/projects/${project.id}`);
+  await ownerPage.getByRole("tab", { name: /Участники/ }).click();
+  await ownerPage.getByLabel("Роль: Влад").selectOption("viewer");
+  await expect(guestPage.getByText("Только чтение").first()).toBeVisible();
+
+  await ownerPage.getByText("Влад", { exact: true }).hover();
+  await ownerPage.getByRole("button", { name: "Убрать из проекта: Влад" }).click();
+  await ownerPage.getByRole("button", { name: "Убрать", exact: true }).click();
+  await expect(guestPage.getByText("Вас удалили из проекта «Живые права».")).toBeVisible();
+  await expect(guestPage).toHaveURL(/\/$/);
+});
+
 test("a person can change the name others see", async ({ browser, request }) => {
   const visitor = await guest(request, "Гость");
   const page = await openAs(browser, visitor, "/");
