@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ExternalLink, GitBranch, GitCommitHorizontal, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { GithubBranchesResult, ProjectWithMembers, PushResult } from "@collab/shared";
+import type { GithubBranchesResult, ProjectWithMembers, PushPreview, PushResult } from "@collab/shared";
 import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
 import { Button } from "./ui/Button";
@@ -36,6 +36,12 @@ function suggestBranchName() {
   return `collab-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 }
 
+type Preview =
+  | { state: "idle" }
+  | { state: "loading" }
+  | { state: "ready"; data: PushPreview }
+  | { state: "error"; message: string };
+
 type Lookup =
   | { state: "idle" }
   | { state: "loading" }
@@ -54,7 +60,9 @@ export function PushGithubDialog({ project, onClose }: { project: ProjectWithMem
   const [newBranch, setNewBranch] = useState(suggestBranchName);
   const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
   const [phase, setPhase] = useState<"idle" | "saving" | "pushing">("idle");
+  const [preview, setPreview] = useState<Preview>({ state: "idle" });
   const lookupId = useRef(0);
+  const previewId = useRef(0);
 
   const linked = project.github;
   const tokenReady = token.trim().length >= 10;
@@ -89,7 +97,39 @@ export function PushGithubDialog({ project, onClose }: { project: ProjectWithMem
   }, [token, repoUrl, tokenReady, repoReady, linked, project.id]);
 
   const branch = target === "new" ? newBranch.trim() : existingBranch;
-  const ready = lookup.state === "ready" && lookup.data.canPush && !!branch && !!message.trim();
+
+  // Show what would be sent for the chosen branch, so nothing is a surprise after pressing the button.
+  const lookupReady = lookup.state === "ready" && lookup.data.canPush;
+  useEffect(() => {
+    if (!lookupReady || !branch) {
+      setPreview({ state: "idle" });
+      return;
+    }
+    const id = ++previewId.current;
+    setPreview({ state: "loading" });
+    const timer = setTimeout(() => {
+      api
+        .post<PushPreview>(`/projects/${project.id}/github/preview`, {
+          token: token.trim(),
+          branch,
+          ...(linked ? {} : { repoUrl: repoUrl.trim() }),
+          ...(overwrite ? { overwrite: true } : {}),
+        })
+        .then((data) => {
+          if (id === previewId.current) setPreview({ state: "ready", data });
+        })
+        .catch((error) => {
+          if (id === previewId.current) {
+            setPreview({ state: "error", message: error instanceof ApiError ? error.message : "Не удалось посмотреть изменения" });
+          }
+        });
+    }, SYNC_WAIT_MS / 3);
+    return () => clearTimeout(timer);
+  }, [lookupReady, branch, overwrite, token, repoUrl, linked, project.id]);
+
+  const hasChanges = preview.state === "ready" && preview.data.added.length + preview.data.modified.length > 0;
+  const hasConflicts = preview.state === "ready" && preview.data.conflicts.length > 0;
+  const ready = lookup.state === "ready" && lookup.data.canPush && !!branch && !!message.trim() && hasChanges && (!hasConflicts || overwrite);
 
   const push = useMutation({
     mutationFn: async () => {
@@ -113,7 +153,6 @@ export function PushGithubDialog({ project, onClose }: { project: ProjectWithMem
 
   const result = push.data;
   const error = push.error instanceof ApiError ? push.error : null;
-  const isConflict = error?.status === 409 && error.message.includes("изменились в GitHub");
   const busy = phase !== "idle";
 
   function submit(event: FormEvent) {
@@ -165,18 +204,6 @@ export function PushGithubDialog({ project, onClose }: { project: ProjectWithMem
       ) : (
         <form onSubmit={submit} className="space-y-5">
           {error && <ErrorNote>{error.message}</ErrorNote>}
-          {isConflict && (
-            <label className="flex items-start gap-2 rounded-lg bg-warn/10 p-3 text-sm">
-              <input
-                type="checkbox"
-                checked={overwrite}
-                onChange={(event) => setOverwrite(event.target.checked)}
-                className="mt-0.5 accent-[rgb(var(--accent))]"
-              />
-              <span>Всё равно отправить и заменить версии из GitHub (их изменения в этих файлах будут перезаписаны)</span>
-            </label>
-          )}
-
           {!linked && (
             <Field
               label="Репозиторий"
@@ -313,6 +340,8 @@ export function PushGithubDialog({ project, onClose }: { project: ProjectWithMem
             </p>
           </fieldset>
 
+          <PreviewBlock preview={preview} overwrite={overwrite} onOverwrite={setOverwrite} disabled={busy} />
+
           <Field
             label="Сообщение коммита"
             value={message}
@@ -333,5 +362,84 @@ export function PushGithubDialog({ project, onClose }: { project: ProjectWithMem
         </form>
       )}
     </Modal>
+  );
+}
+
+function FileList({ title, tone, paths }: { title: string; tone: string; paths: string[] }) {
+  if (paths.length === 0) return null;
+  return (
+    <div>
+      <p className={cn("mb-1 text-xs font-medium", tone)}>
+        {title} · {paths.length}
+      </p>
+      <ul className="space-y-0.5 font-mono text-xs text-muted">
+        {paths.slice(0, 8).map((path) => (
+          <li key={path} className="truncate" title={path}>
+            {path}
+          </li>
+        ))}
+        {paths.length > 8 && <li className="text-faint">и ещё {paths.length - 8}…</li>}
+      </ul>
+    </div>
+  );
+}
+
+function PreviewBlock({
+  preview,
+  overwrite,
+  onOverwrite,
+  disabled,
+}: {
+  preview: Preview;
+  overwrite: boolean;
+  onOverwrite: (value: boolean) => void;
+  disabled: boolean;
+}) {
+  if (preview.state === "idle") return null;
+  if (preview.state === "loading") {
+    return (
+      <p className="flex items-center gap-2 text-xs text-muted">
+        <LoaderCircle size={13} className="animate-spin" /> Смотрим, что изменилось…
+      </p>
+    );
+  }
+  if (preview.state === "error") {
+    return (
+      <p className="flex items-start gap-2 text-xs text-bad">
+        <TriangleAlert size={13} className="mt-0.5 shrink-0" /> {preview.message}
+      </p>
+    );
+  }
+
+  const { added, modified, conflicts, unchanged } = preview.data;
+  if (added.length + modified.length + conflicts.length === 0) {
+    return (
+      <p className="rounded-xl bg-raised px-3 py-2.5 text-sm text-muted">
+        Нечего отправлять: файлы проекта совпадают с репозиторием ({unchanged}).
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-canvas p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-faint">Что будет отправлено</p>
+      <FileList title="Изменены" tone="text-accent" paths={modified} />
+      <FileList title="Новые" tone="text-ok" paths={added} />
+      {conflicts.length > 0 && (
+        <div className="space-y-2 rounded-lg bg-warn/10 p-2.5">
+          <FileList title="Изменились и в GitHub" tone="text-warn" paths={conflicts} />
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={overwrite}
+              disabled={disabled}
+              onChange={(event) => onOverwrite(event.target.checked)}
+              className="mt-0.5 accent-[rgb(var(--accent))]"
+            />
+            <span>Заменить версии из GitHub моими (чужие правки в этих файлах будут перезаписаны)</span>
+          </label>
+        </div>
+      )}
+      {unchanged > 0 && <p className="text-xs text-faint">Без изменений: {unchanged}</p>}
+    </div>
   );
 }

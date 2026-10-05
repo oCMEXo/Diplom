@@ -4,6 +4,7 @@ import { Eye, LoaderCircle, Play } from "lucide-react";
 import { inferLanguage, toRunnableLanguage } from "@collab/shared";
 import { BoardEditor } from "../components/BoardEditor";
 import { CollabEditor, type EditorController } from "../components/CollabEditor";
+import { FileTabs } from "../components/FileTabs";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { RunPanel } from "../components/RunPanel";
 import { FILE_KINDS } from "../components/layout/ProjectNav";
@@ -82,6 +83,7 @@ export function FileEditorPage() {
     return (
       <>
         <ProjectHeader {...header} />
+        <FileTabs projectId={projectId} files={files} activeId={file.id} />
         <div className="min-h-0 flex-1">
           <BoardEditor key={file.id} fileId={file.id} readOnly={!canEdit} fileName={name} onStatusChange={setStatus} />
         </div>
@@ -135,6 +137,7 @@ export function FileEditorPage() {
     return (
       <>
         <ProjectHeader {...header} actions={actions} />
+        <FileTabs projectId={projectId} files={files} activeId={file.id} />
         <div className="grid min-h-0 flex-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1">
           <div className="min-h-0 min-w-0 border-b border-line md:border-b-0 md:border-r">{editor}</div>
           <div className="min-h-0 min-w-0">
@@ -148,6 +151,7 @@ export function FileEditorPage() {
   return (
     <>
       <ProjectHeader {...header} actions={actions} />
+      <FileTabs projectId={projectId} files={files} activeId={file.id} />
       <div className="min-h-0 flex-1">{editor}</div>
       {runnable && <RunPanel run={run} />}
     </>

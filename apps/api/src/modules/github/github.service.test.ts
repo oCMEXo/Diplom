@@ -4,7 +4,7 @@ import { prisma } from "@collab/db";
 import { gitBlobSha } from "../../lib/git-blob.js";
 import { textToYjsState } from "../../lib/yjs-text.js";
 import { createProject, inviteMember } from "../projects/projects.service.js";
-import { listBranches, pushToGithub } from "./github.service.js";
+import { listBranches, previewPush, pushToGithub } from "./github.service.js";
 
 const TOKEN = "ghp_test_token_123456";
 
@@ -336,5 +336,58 @@ describe("pushToGithub", () => {
     await expect(
       listBranches(owner.id, project.id, { token: "wrong_token_value", repoUrl: "octocat/demo" }, github.fetchImpl),
     ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it("previews exactly what a push would send, without sending anything", async () => {
+    const owner = await user();
+    const github = fakeGithub({ "a.txt": "one", "b.txt": "two", "c.txt": "three" });
+    const project = await linkedProject(owner.id, { "a.txt": "one", "b.txt": "two", "c.txt": "three" });
+    await edit(project.id, "a.txt", "one changed");
+    await edit(project.id, "c.txt", "mine");
+    github.commitElsewhere("main", "c.txt", "theirs");
+    await prisma.file.create({
+      data: { projectId: project.id, path: "new.txt", type: "code", yjsState: Buffer.from(textToYjsState("fresh")) },
+    });
+    const commitsBefore = github.commits.size;
+
+    const preview = await previewPush(owner.id, project.id, { token: TOKEN }, github.fetchImpl);
+
+    expect(preview).toEqual({
+      branch: "main",
+      newBranch: false,
+      added: ["new.txt"],
+      modified: ["a.txt"],
+      conflicts: ["c.txt"],
+      unchanged: 1,
+    });
+    expect(github.commits.size).toBe(commitsBefore);
+    expect(github.read("main", "a.txt")).toBe("one");
+    expect(github.calls.some((call) => call.startsWith("POST /repos/octocat/demo/git"))).toBe(false);
+
+    const forced = await previewPush(owner.id, project.id, { token: TOKEN, overwrite: true }, github.fetchImpl);
+    expect(forced.conflicts).toEqual([]);
+    expect(forced.modified.sort()).toEqual(["a.txt", "c.txt"]);
+  });
+
+  it("previews a new branch as a place where nothing collides", async () => {
+    const owner = await user();
+    const github = fakeGithub({ "a.txt": "one" });
+    const project = await linkedProject(owner.id, { "a.txt": "one" });
+    await edit(project.id, "a.txt", "mine");
+    github.commitElsewhere("main", "a.txt", "theirs");
+
+    const preview = await previewPush(owner.id, project.id, { token: TOKEN, branch: "collab/x" }, github.fetchImpl);
+    expect(preview).toMatchObject({ branch: "collab/x", newBranch: true, modified: ["a.txt"], conflicts: [] });
+  });
+
+  it("is open to editors only", async () => {
+    const owner = await user();
+    const viewer = await user();
+    const project = await linkedProject(owner.id, { "a.txt": "one" });
+    await inviteMember(owner.id, project.id, { email: viewer.email, role: "viewer" });
+
+    await expect(
+      previewPush(viewer.id, project.id, { token: TOKEN }, fakeGithub({ "a.txt": "one" }).fetchImpl),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 });

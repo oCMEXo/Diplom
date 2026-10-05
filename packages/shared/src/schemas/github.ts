@@ -39,3 +39,20 @@ export const githubBranchesResultSchema = z.object({
   canPush: z.boolean(),
 });
 export type GithubBranchesResult = z.infer<typeof githubBranchesResultSchema>;
+
+export const pushPreviewRequestSchema = pushGithubSchema.pick({ token: true, repoUrl: true, branch: true, overwrite: true });
+export type PushPreviewRequest = z.infer<typeof pushPreviewRequestSchema>;
+
+/** What a push would do right now, without doing it. */
+export const pushPreviewSchema = z.object({
+  branch: z.string(),
+  newBranch: z.boolean(),
+  /** Files that exist here but not in the repository. */
+  added: z.array(z.string()),
+  /** Files edited here that the repository already has. */
+  modified: z.array(z.string()),
+  /** Files edited here that also changed on GitHub since they were synced. */
+  conflicts: z.array(z.string()),
+  unchanged: z.number().int(),
+});
+export type PushPreview = z.infer<typeof pushPreviewSchema>;

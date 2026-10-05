@@ -372,3 +372,27 @@ test("a project that has files opens on one of them, and the tab title names it"
   await expect(page.getByRole("heading", { name: "README.md" })).toBeVisible();
   await expect(page).toHaveTitle(/README\.md · Старт/);
 });
+
+test("opened files become tabs that can be switched and closed", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Вкладки");
+  const first = await createFile(request, owner, project.id, "one.md", "doc");
+  await createFile(request, owner, project.id, "two.md", "doc");
+  const page = await openAs(browser, owner, `/projects/${project.id}/files/${first.id}`);
+  const strip = page.getByRole("tablist", { name: "Открытые файлы" });
+
+  // One open file needs no tab strip.
+  await expect(strip.getByRole("tab")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "two.md" }).click();
+  await expect(strip.getByRole("tab")).toHaveCount(2);
+  await expect(strip.getByRole("tab", { name: "two.md" })).toHaveAttribute("aria-selected", "true");
+
+  await strip.getByRole("tab", { name: "one.md" }).click();
+  await expect(strip.getByRole("tab", { name: "one.md" })).toHaveAttribute("aria-selected", "true");
+
+  await strip.getByRole("tab", { name: "one.md" }).hover();
+  await page.getByRole("button", { name: "Закрыть вкладку one.md" }).click();
+  await expect(page.getByRole("heading", { name: "two.md" })).toBeVisible();
+  await expect(strip.getByRole("tab")).toHaveCount(0);
+});

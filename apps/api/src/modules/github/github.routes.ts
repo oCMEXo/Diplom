@@ -5,9 +5,11 @@ import {
   githubBranchesResultSchema,
   githubBranchesSchema,
   pushGithubSchema,
+  pushPreviewRequestSchema,
+  pushPreviewSchema,
   pushResultSchema,
 } from "@collab/shared";
-import { listBranches, pushToGithub } from "./github.service.js";
+import { listBranches, previewPush, pushToGithub } from "./github.service.js";
 
 export const githubRoutes: FastifyPluginAsyncZod = async (app) => {
   app.addHook("preHandler", app.authenticate);
@@ -30,6 +32,27 @@ export const githubRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request) => listBranches(request.userId, request.params.projectId, request.body),
+  );
+
+  app.post(
+    "/:projectId/github/preview",
+    {
+      schema: {
+        tags: ["github"],
+        params: z.object({ projectId: z.string().uuid() }),
+        body: pushPreviewRequestSchema,
+        response: {
+          200: pushPreviewSchema,
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+          413: errorResponseSchema,
+          502: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => previewPush(request.userId, request.params.projectId, request.body),
   );
 
   app.post(
