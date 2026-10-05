@@ -131,6 +131,7 @@ export function CollabEditor({
       loading={<span className="text-sm text-muted">Загружаем редактор…</span>}
       options={{
         readOnly,
+        readOnlyMessage: { value: "Только чтение: менять файлы могут редакторы и владелец проекта." },
         minimap: { enabled: false },
         fontSize: 13.5,
         fontFamily: '"JetBrains Mono Variable", ui-monospace, monospace',

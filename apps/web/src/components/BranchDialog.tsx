@@ -53,7 +53,9 @@ export function BranchDialog({
       description={
         data
           ? `${data.repo.owner}/${data.repo.name}. Каждая ветка хранит свои файлы и правки: можно переключаться туда и обратно.`
-          : "Загружаем список веток…"
+          : branches.isError
+            ? "Список веток сейчас недоступен."
+            : "Загружаем список веток…"
       }
       onClose={onClose}
       width="max-w-lg"

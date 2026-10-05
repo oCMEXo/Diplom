@@ -32,7 +32,11 @@ export function Modal({
       if (event.key === "Escape" && dialogs[dialogs.length - 1] === panel.current) closeRef.current();
     };
     document.addEventListener("keydown", onKey);
-    panel.current?.querySelector<HTMLElement>("input, select, textarea, button:not([data-close])")?.focus();
+    // A dialog can name the field to start in; otherwise the first control gets the focus.
+    (
+      panel.current?.querySelector<HTMLElement>("[data-autofocus]") ??
+      panel.current?.querySelector<HTMLElement>("input, select, textarea, button:not([data-close])")
+    )?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       previous?.focus?.();

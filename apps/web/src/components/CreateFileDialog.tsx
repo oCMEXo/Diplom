@@ -52,6 +52,7 @@ export function CreateFileDialog({
         />
         <Field
           label="Имя файла"
+          data-autofocus
           placeholder={EXAMPLE[type]}
           value={path}
           onChange={(event) => setPath(event.target.value)}

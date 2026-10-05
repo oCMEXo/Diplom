@@ -172,6 +172,9 @@ export function BoardEditor({
     const base: BoardShape = { id, type: tool, x, y, w: 0, h: 0, x2: x, y2: y, fill: color, text: "" };
 
     if (tool === "text") {
+      // Otherwise the browser then focuses the board itself, the new text field loses focus at once
+      // and, still empty, is removed.
+      event.evt.preventDefault();
       addShape(board, { ...base, w: 220, h: TEXT_SIZE * 1.4 });
       setSelectedId(id);
       setEditingId(id);

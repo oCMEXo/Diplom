@@ -102,7 +102,7 @@ export function MembersPanel({
       {removing && (
         <ConfirmDialog
           title="Убрать из проекта?"
-          description={`${removing.name} потеряет доступ к проекту. Вернуться можно будет по ссылке-приглашению. Открытые вкладки перестанут получать правки после обновления страницы.`}
+          description={`${removing.name} сразу потеряет доступ к проекту: открытые у него вкладки закроются. Вернуться можно будет по ссылке-приглашению.`}
           confirmLabel="Убрать"
           danger
           action={() => api.delete(`/projects/${projectId}/members/${removing.userId}`)}

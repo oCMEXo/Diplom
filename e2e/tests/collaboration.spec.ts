@@ -140,6 +140,25 @@ test("a shape drawn on the board appears for everyone and can be undone", async 
   await expect(guestBoard).toHaveAttribute("data-shape-count", "0");
 });
 
+test("a text label can be put on the board with one click", async ({ browser, request }) => {
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Подписи");
+  const board = await createFile(request, owner, project.id, "plan.board", "board");
+  const page = await openAs(browser, owner, `/projects/${project.id}/files/${board.id}`);
+  const boardArea = page.locator("[data-shape-count]");
+  await expect(boardArea).toHaveAttribute("data-shape-count", "0");
+
+  await page.getByRole("button", { name: "Текст" }).click();
+  const box = await page.locator("canvas").first().boundingBox();
+  if (!box) throw new Error("board canvas is not visible");
+  await page.mouse.click(box.x + 120, box.y + 120);
+  // The text field must keep the focus after the click, or the empty label disappears at once.
+  await expect(boardArea.locator("textarea")).toBeFocused();
+  await page.keyboard.type("База данных");
+  await page.keyboard.press("Enter");
+  await expect(boardArea).toHaveAttribute("data-shape-count", "1");
+});
+
 test("a file can be created from the sidebar and the theme choice is remembered", async ({ browser, request }) => {
   const owner = await register(request, "Аня");
   const project = await createProject(request, owner, "Интерфейс");

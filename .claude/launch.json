@@ -6,6 +6,57 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@collab/web", "dev"],
       "port": 5173
+    },
+    {
+      "name": "demo-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@collab/api", "exec", "tsx", "src/server.ts"],
+      "port": 3201,
+      "url": "http://localhost:3201",
+      "env": {
+        "PORT": "3201",
+        "CORS_ORIGIN": "http://localhost:5201,http://127.0.0.1:5201",
+        "DATABASE_URL": "postgresql://collab:collab@localhost:5433/collab?schema=public",
+        "REDIS_URL": "redis://localhost:6380/3",
+        "COLLAB_URL": "http://localhost:1335",
+        "JWT_ACCESS_SECRET": "demo-access-secret-0123456789",
+        "JWT_REFRESH_SECRET": "demo-refresh-secret-0123456789"
+      }
+    },
+    {
+      "name": "demo-collab",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@collab/collab", "exec", "tsx", "src/server.ts"],
+      "port": 1335,
+      "url": "http://localhost:1335",
+      "env": {
+        "PORT": "1335",
+        "DATABASE_URL": "postgresql://collab:collab@localhost:5433/collab?schema=public",
+        "REDIS_URL": "redis://localhost:6380/3",
+        "JWT_ACCESS_SECRET": "demo-access-secret-0123456789"
+      }
+    },
+    {
+      "name": "demo-runner",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@collab/runner", "exec", "tsx", "src/server.ts"],
+      "port": 3203,
+      "url": "http://localhost:3203",
+      "env": {
+        "REDIS_URL": "redis://localhost:6380/3",
+        "TERMINAL_PORT": "3203"
+      }
+    },
+    {
+      "name": "demo-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@collab/web", "exec", "vite", "--port", "5201", "--strictPort", "--host"],
+      "port": 5201,
+      "env": {
+        "VITE_API_URL": "http://localhost:3201",
+        "VITE_COLLAB_URL": "ws://localhost:1335",
+        "VITE_TERMINAL_URL": "http://localhost:3203"
+      }
     }
   ]
 }
