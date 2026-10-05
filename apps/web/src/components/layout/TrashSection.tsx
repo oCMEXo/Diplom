@@ -7,7 +7,17 @@ import { cn } from "../../lib/cn";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { FILE_KINDS } from "./file-kinds";
 
-/** Deleted files wait here until someone restores them; only the owner can remove them for good. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole days until the server empties this file from the trash (at least one: it runs hourly). */
+function daysLeft(purgeAt: string) {
+  return Math.max(1, Math.ceil((new Date(purgeAt).getTime() - Date.now()) / DAY_MS));
+}
+
+/**
+ * Deleted files wait here until someone restores them or the retention period runs out; only the
+ * owner can remove them for good earlier.
+ */
 export function TrashSection({ projectId, canEdit, isOwner }: { projectId: string; canEdit: boolean; isOwner: boolean }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -56,8 +66,11 @@ export function TrashSection({ projectId, canEdit, isOwner }: { projectId: strin
               return (
                 <li key={file.id} className="group/trash flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-faint hover:bg-raised">
                   <kind.icon size={15} className="shrink-0 opacity-60" />
-                  <span className="min-w-0 flex-1 truncate line-through decoration-faint/50" title={file.path}>
-                    {file.path.split("/").pop()}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate line-through decoration-faint/50" title={file.path}>
+                      {file.path.split("/").pop()}
+                    </span>
+                    <span className="block text-[11px]">удалится через {daysLeft(file.purgeAt)} дн.</span>
                   </span>
                   {canEdit && (
                     <button

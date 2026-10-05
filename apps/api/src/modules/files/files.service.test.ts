@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@collab/db";
+import { env } from "../../env.js";
 import { createProject, inviteMember } from "../projects/projects.service.js";
 import {
   createFile,
@@ -8,10 +9,13 @@ import {
   getFile,
   listFiles,
   listTrash,
+  purgeExpiredTrash,
   purgeFile,
   restoreFile,
   updateFile,
 } from "./files.service.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function createTestUser() {
   return prisma.user.create({
@@ -132,6 +136,8 @@ describe("files.service", () => {
     expect(trash).toHaveLength(1);
     expect(trash[0]).toMatchObject({ id: file.id, path: "src/scratch.py" });
     expect(trash[0]?.deletedAt).toEqual(expect.any(String));
+    const kept = Date.parse(trash[0]!.purgeAt) - Date.parse(trash[0]!.deletedAt);
+    expect(kept).toBe(env.TRASH_RETENTION_DAYS * DAY_MS);
   });
 
   it("restores a file with its content and original path", async () => {
@@ -191,5 +197,59 @@ describe("files.service", () => {
     const p = await project(owner.id);
     const file = await createFile(owner.id, p.id, { path: "alive.py", type: "code" });
     await expect(purgeFile(owner.id, p.id, file.id)).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  describe("automatic trash cleanup", () => {
+    const now = new Date();
+    const daysAgo = (days: number) => new Date(now.getTime() - days * DAY_MS);
+
+    /** A file deleted `days` ago (or a live one for `null`), as the hourly job would find it. */
+    async function fileDeleted(projectId: string, ownerId: string, path: string, days: number | null) {
+      const file = await createFile(ownerId, projectId, { path, type: "code" });
+      if (days !== null) {
+        await deleteFile(ownerId, projectId, file.id);
+        await prisma.file.update({ where: { id: file.id }, data: { deletedAt: daysAgo(days) } });
+      }
+      return file.id;
+    }
+
+    const exists = async (id: string) => (await prisma.file.findUnique({ where: { id } })) !== null;
+
+    it("deletes files that sat in the trash longer than the retention period, and nothing else", async () => {
+      const owner = await user();
+      const p = await project(owner.id);
+      const expired = await fileDeleted(p.id, owner.id, "old.py", 31);
+      const recent = await fileDeleted(p.id, owner.id, "recent.py", 29);
+      const live = await fileDeleted(p.id, owner.id, "live.py", null);
+      await prisma.file.update({ where: { id: live }, data: { updatedAt: daysAgo(400) } });
+
+      expect(await purgeExpiredTrash(now, 30)).toBeGreaterThanOrEqual(1);
+
+      expect(await exists(expired)).toBe(false);
+      expect(await exists(recent)).toBe(true);
+      expect(await exists(live)).toBe(true);
+      expect((await listTrash(owner.id, p.id)).map((f) => f.id)).toEqual([recent]);
+    });
+
+    it("goes through everything that expired in several batches", async () => {
+      const owner = await user();
+      const p = await project(owner.id);
+      const expired: string[] = [];
+      for (let i = 0; i < 5; i += 1) expired.push(await fileDeleted(p.id, owner.id, `old${i}.py`, 45));
+
+      expect(await purgeExpiredTrash(now, 30, 2)).toBeGreaterThanOrEqual(5);
+      for (const id of expired) expect(await exists(id)).toBe(false);
+    });
+
+    it("follows a shorter retention when one is given", async () => {
+      const owner = await user();
+      const p = await project(owner.id);
+      const weekOld = await fileDeleted(p.id, owner.id, "week.py", 8);
+
+      await purgeExpiredTrash(now, 30);
+      expect(await exists(weekOld)).toBe(true);
+      await purgeExpiredTrash(now, 7);
+      expect(await exists(weekOld)).toBe(false);
+    });
   });
 });
