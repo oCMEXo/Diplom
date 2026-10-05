@@ -4,7 +4,8 @@ import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { FileRecord, FileType, ProjectWithMembers } from "@collab/shared";
 import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
-import { RealtimeProvider } from "../lib/RealtimeContext";
+import { RealtimeProvider, useRealtimeEvents } from "../lib/RealtimeContext";
+import { BranchDialog, refreshProjectFiles } from "../components/BranchDialog";
 import { CreateFileDialog } from "../components/CreateFileDialog";
 import { CreateProjectDialog } from "../components/CreateProjectDialog";
 import { DeleteFileDialog } from "../components/DeleteFileDialog";
@@ -30,6 +31,19 @@ export interface ProjectOutletContext {
 
 const WIDE = "(min-width: 1280px)";
 
+/** When somebody opens another branch, everybody's file list follows. */
+function BranchWatcher({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useRealtimeEvents((event) => {
+    if (event.type !== "project.branch") return;
+    refreshProjectFiles(queryClient, projectId);
+    if (location.pathname.includes("/files/")) navigate(`/projects/${projectId}`);
+  });
+  return null;
+}
+
 export function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -46,6 +60,7 @@ export function ProjectPage() {
   const [deletingFile, setDeletingFile] = useState<FileRecord | null>(null);
   const [renamingFile, setRenamingFile] = useState<FileRecord | null>(null);
   const [searching, setSearching] = useState(false);
+  const [branching, setBranching] = useState(false);
 
   // Ctrl+P (or Ctrl+K) opens "go to file" instead of the browser's print dialog.
   useEffect(() => {
@@ -117,6 +132,7 @@ export function ProjectPage() {
 
   return (
     <RealtimeProvider key={project.id} projectId={project.id}>
+      <BranchWatcher projectId={project.id} />
       <div className="flex h-screen overflow-hidden">
         {navOpen && (
           <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm animate-fade-in lg:hidden" onClick={() => setNavOpen(false)} />
@@ -140,6 +156,7 @@ export function ProjectPage() {
             onRenameFile={setRenamingFile}
             onSearch={() => setSearching(true)}
             onNavigate={() => setNavOpen(false)}
+            onBranches={() => setBranching(true)}
           />
         </div>
 
@@ -171,6 +188,7 @@ export function ProjectPage() {
       {inviteOpen && <InviteDialog project={project} onClose={() => setInviteOpen(false)} />}
       {importing && <ImportGithubDialog project={project} onClose={() => setImporting(false)} />}
       {pushing && <PushGithubDialog project={project} onClose={() => setPushing(false)} />}
+      {branching && <BranchDialog project={project} canEdit={canEdit} onClose={() => setBranching(false)} />}
       {searching && (
         <QuickOpen
           files={files}

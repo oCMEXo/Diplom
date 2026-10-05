@@ -85,3 +85,12 @@ export async function typeInEditor(page: Page, text: string) {
   await page.locator(".monaco-editor").first().click();
   await page.keyboard.type(text);
 }
+
+export async function importRepo(request: APIRequestContext, auth: Auth, projectId: string, url: string) {
+  const response = await request.post(`${API}/projects/${projectId}/import/github`, {
+    headers: bearer(auth),
+    data: { url },
+    timeout: 60_000,
+  });
+  if (!response.ok()) throw new Error(`import failed: ${response.status()} ${await response.text()}`);
+}

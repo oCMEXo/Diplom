@@ -11,9 +11,9 @@ import { yjsStateToText } from "../../lib/yjs-text.js";
  * The rest of the project's text files, so the program can import its neighbours. Shallow files come
  * first when the limits cut the list; installed dependencies are never sent.
  */
-async function siblingFiles(projectId: string, entryId: string) {
+async function siblingFiles(projectId: string, entryId: string, branch: string) {
   const rows = await prisma.file.findMany({
-    where: { projectId, id: { not: entryId }, type: { not: "board" }, deletedAt: null },
+    where: { projectId, branch, id: { not: entryId }, type: { not: "board" }, deletedAt: null },
     select: { path: true, yjsState: true },
   });
   const candidates = rows
@@ -67,7 +67,7 @@ export async function requestRun(
     language,
     code,
     entry: file.path,
-    files: await siblingFiles(projectId, fileId),
+    files: await siblingFiles(projectId, fileId, file.branch),
     startedBy: { id: user.id, name: user.name },
   });
 

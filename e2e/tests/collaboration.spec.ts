@@ -4,6 +4,7 @@ import {
   createProject,
   editorText,
   guest,
+  importRepo,
   join,
   openAs,
   register,
@@ -395,4 +396,35 @@ test("opened files become tabs that can be switched and closed", async ({ browse
   await page.getByRole("button", { name: "Закрыть вкладку one.md" }).click();
   await expect(page.getByRole("heading", { name: "two.md" })).toBeVisible();
   await expect(strip.getByRole("tab")).toHaveCount(0);
+});
+
+test("switching the repository branch changes the files for everyone in the project", async ({ browser, request }) => {
+  const github = await request.get("https://api.github.com/repos/octocat/Spoon-Knife/branches").catch(() => null);
+  test.skip(!github?.ok(), "needs network access to GitHub");
+
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Ложка и вилка");
+  await importRepo(request, owner, project.id, "https://github.com/octocat/Spoon-Knife");
+  const friend = await guest(request, "Боря");
+  await join(request, friend, project.inviteCode);
+
+  const ownerPage = await openAs(browser, owner, `/projects/${project.id}`);
+  const friendPage = await openAs(browser, friend, `/projects/${project.id}`);
+  await expect(friendPage.getByRole("link", { name: "index.html" })).toBeVisible();
+  await expect(friendPage.getByRole("link", { name: "test.md" })).toHaveCount(0);
+
+  await ownerPage.getByRole("button", { name: "Ветка репозитория" }).click();
+  const dialog = ownerPage.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: /^main/ })).toHaveAttribute("aria-current", "true");
+  await dialog.getByRole("button", { name: /^test-branch/ }).click();
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
+
+  // The other person did nothing: their sidebar follows the switch.
+  await expect(friendPage.getByRole("link", { name: "test.md" })).toBeVisible();
+  await expect(friendPage.getByRole("button", { name: "Ветка репозитория" })).toHaveText("test-branch");
+
+  await ownerPage.getByRole("button", { name: "Ветка репозитория" }).click();
+  await ownerPage.getByRole("dialog").getByRole("button", { name: /^main/ }).click();
+  await expect(friendPage.getByRole("link", { name: "test.md" })).toHaveCount(0);
+  await expect(friendPage.getByRole("link", { name: "index.html" })).toBeVisible();
 });

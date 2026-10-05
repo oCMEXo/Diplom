@@ -85,6 +85,9 @@ model File {
   id          String    @id @default(uuid())
   projectId   String    @map("project_id")
   path        String
+  // The GitHub branch this file belongs to ("" for projects without a repository). Only the
+  // project's active branch is shown, so every branch keeps its own files and edits.
+  branch      String    @default("")
   type        FileKind  @default(code)
   language    String?
   yjsState    Bytes?    @map("yjs_state")
@@ -97,7 +100,7 @@ model File {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, path])
+  @@unique([projectId, branch, path])
   @@map("files")
 }
 

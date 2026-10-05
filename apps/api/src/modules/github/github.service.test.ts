@@ -155,7 +155,7 @@ describe("pushToGithub", () => {
 
   async function edit(projectId: string, path: string, content: string) {
     await prisma.file.update({
-      where: { projectId_path: { projectId, path } },
+      where: { projectId_branch_path: { projectId, branch: "", path } },
       data: { yjsState: Buffer.from(textToYjsState(content)) },
     });
   }

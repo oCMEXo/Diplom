@@ -56,3 +56,23 @@ export const pushPreviewSchema = z.object({
   unchanged: z.number().int(),
 });
 export type PushPreview = z.infer<typeof pushPreviewSchema>;
+
+export const branchListSchema = z.object({
+  repo: z.object({ owner: z.string(), name: z.string() }),
+  /** The branch whose files the project shows now. */
+  active: z.string(),
+  defaultBranch: z.string(),
+  branches: z.array(z.string()),
+  /** Branches that already have files in the project (opened before). */
+  loaded: z.array(z.string()),
+});
+export type BranchList = z.infer<typeof branchListSchema>;
+
+export const branchSwitchSchema = z.object({ name: z.string().trim().min(1).max(200) });
+
+export const branchSwitchResultSchema = z.object({
+  branch: z.string(),
+  /** Files downloaded from GitHub; 0 when the branch had been opened before. */
+  imported: z.number().int(),
+});
+export type BranchSwitchResult = z.infer<typeof branchSwitchResultSchema>;

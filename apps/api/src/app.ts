@@ -21,6 +21,7 @@ import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
 import { runsRoutes } from "./modules/runs/runs.routes.js";
 import { importRoutes } from "./modules/import/import.routes.js";
 import { githubRoutes } from "./modules/github/github.routes.js";
+import { branchesRoutes } from "./modules/branches/branches.routes.js";
 import { closeRunQueue } from "./lib/queue.js";
 
 export interface AppOptions {
@@ -106,6 +107,7 @@ export async function buildApp(options: AppOptions = {}) {
   }
   await app.register(importRoutes, { prefix: "/projects" });
   await app.register(githubRoutes, { prefix: "/projects" });
+  await app.register(branchesRoutes, { prefix: "/projects" });
   await app.register(realtimeRoutes);
 
   app.addHook("onClose", closeRunQueue);

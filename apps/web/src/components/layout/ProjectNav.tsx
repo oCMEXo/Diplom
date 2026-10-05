@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search, UserPlus } from "lucide-react";
+import { GitBranch, Plus, Search, UserPlus } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -83,6 +83,7 @@ export function ProjectNav({
   onRenameFile,
   onSearch,
   onNavigate,
+  onBranches,
 }: {
   project: ProjectWithMembers;
   files: FileRecord[];
@@ -96,6 +97,7 @@ export function ProjectNav({
   onRenameFile: (file: FileRecord) => void;
   onSearch: () => void;
   onNavigate: () => void;
+  onBranches: () => void;
 }) {
   const online = useOnlineUsers();
   const status = useRealtimeStatus();
@@ -107,7 +109,20 @@ export function ProjectNav({
         <div className="flex h-14 items-center justify-between gap-2 border-b border-line px-4">
           <div className="min-w-0">
             <h1 className="truncate text-sm font-semibold">{project.name}</h1>
-            <RoleBadge role={project.myRole} className="mt-0.5" />
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+              <RoleBadge role={project.myRole} />
+              {project.github && (
+                <button
+                  onClick={onBranches}
+                  title={`${project.github.owner}/${project.github.repo}: сменить ветку`}
+                  aria-label="Ветка репозитория"
+                  className="flex min-w-0 items-center gap-1 rounded-md border border-line px-1.5 py-px text-[11px] text-muted transition hover:border-accent hover:text-fg"
+                >
+                  <GitBranch size={11} className="shrink-0" />
+                  <span className="truncate font-mono">{project.github.branch ?? "ветка"}</span>
+                </button>
+              )}
+            </div>
           </div>
           <IconButton label="Пригласить участников" onClick={onInvite}>
             <UserPlus size={17} />

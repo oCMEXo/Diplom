@@ -124,7 +124,9 @@ async function planPush(
   }
   const remote = new Map(remoteTree.tree.filter((entry) => entry.type === "blob").map((entry) => [entry.path, entry]));
 
-  const files = await prisma.file.findMany({ where: { projectId, type: { not: "board" }, deletedAt: null } });
+  const files = await prisma.file.findMany({
+    where: { projectId, branch: project.githubBranch ?? "", type: { not: "board" }, deletedAt: null },
+  });
   const changes: Change[] = [];
   const conflicts: string[] = [];
   const inSync: { id: string; sha: string }[] = [];

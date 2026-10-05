@@ -3,6 +3,7 @@ import { inferLanguage } from "@collab/shared";
 import type { CreateFileInput, UpdateFileInput } from "@collab/shared";
 import { AppError } from "../../lib/errors.js";
 import { requireProjectRole } from "../../lib/authorization.js";
+import { activeBranch } from "../../lib/branch.js";
 
 function toFileDto(file: {
   id: string;
@@ -26,7 +27,7 @@ export async function listFiles(userId: string, projectId: string) {
   await requireProjectRole(projectId, userId, "viewer");
 
   const files = await prisma.file.findMany({
-    where: { projectId, deletedAt: null },
+    where: { projectId, branch: await activeBranch(projectId), deletedAt: null },
     orderBy: { path: "asc" },
   });
 
@@ -37,7 +38,7 @@ export async function listTrash(userId: string, projectId: string) {
   await requireProjectRole(projectId, userId, "viewer");
 
   const files = await prisma.file.findMany({
-    where: { projectId, deletedAt: { not: null } },
+    where: { projectId, branch: await activeBranch(projectId), deletedAt: { not: null } },
     orderBy: { deletedAt: "desc" },
   });
 
@@ -54,6 +55,7 @@ export async function createFile(userId: string, projectId: string, input: Creat
     const file = await prisma.file.create({
       data: {
         projectId,
+        branch: await activeBranch(projectId),
         path: input.path,
         type: input.type,
         language: input.language ?? inferLanguage(input.path),

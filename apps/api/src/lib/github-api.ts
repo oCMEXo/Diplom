@@ -8,6 +8,7 @@ const API_BASE = "https://api.github.com";
  * 401 deliberately turned into 400 so the web client does not mistake it for an expired session.
  */
 export class GithubApi {
+  /** An empty token makes anonymous requests: enough to read public repositories. */
   constructor(
     private readonly token: string,
     private readonly fetchImpl: typeof fetch = fetch,
@@ -41,7 +42,7 @@ export class GithubApi {
       response = await this.fetchImpl(`${API_BASE}${path}`, {
         method,
         headers: {
-          Authorization: `Bearer ${this.token}`,
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
           "User-Agent": "collab-code-platform",
