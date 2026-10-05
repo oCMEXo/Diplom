@@ -10,3 +10,4 @@ export * from "./schemas/run.js";
 export * from "./schemas/realtime.js";
 export * from "./schemas/project.js";
 export * from "./schemas/terminal.js";
+export * from "./schemas/version.js";

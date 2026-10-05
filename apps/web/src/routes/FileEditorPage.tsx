@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
-import { Eye, LoaderCircle, Play } from "lucide-react";
+import { Eye, History, LoaderCircle, Play } from "lucide-react";
 import { inferLanguage, toRunnableLanguage } from "@collab/shared";
 import { BoardEditor } from "../components/BoardEditor";
 import { CollabEditor, type EditorController } from "../components/CollabEditor";
 import { FileTabs } from "../components/FileTabs";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { RunPanel } from "../components/RunPanel";
+import { VersionHistoryDialog } from "../components/VersionHistoryDialog";
 import { useRunAccess } from "../components/RunAccess";
 import { FILE_KINDS } from "../components/layout/ProjectNav";
 import { ProjectHeader, type SyncStatus } from "../components/layout/ProjectHeader";
@@ -31,12 +32,14 @@ export function FileEditorPage() {
   const runRef = useRef(run);
   runRef.current = run;
   const [runError, setRunError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     controller.current = null;
     setActiveController(null);
     setRunError(null);
     setStatus("connecting");
+    setHistoryOpen(false);
   }, [fileId]);
 
   useEffect(() => {
@@ -125,17 +128,34 @@ export function FileEditorPage() {
     />
   );
 
-  const actions =
-    runnable && canEdit ? (
-      <span className="flex items-center gap-2">
-        {runError && <span className="text-xs text-bad">{runError}</span>}
-        {access.dialog}
-        <Button size="sm" onClick={() => access.ensure(() => void startRun())} disabled={running}>
-          {running ? <LoaderCircle size={14} className="animate-spin" /> : <Play size={13} className="fill-current text-ok" />}
-          {running ? "Выполняется…" : "Запустить"}
-        </Button>
-      </span>
-    ) : undefined;
+  const actions = (
+    <span className="flex items-center gap-2">
+      <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)} title="История версий" aria-label="История версий">
+        <History size={14} />
+        <span className="hidden lg:inline">История версий</span>
+      </Button>
+      {runnable && canEdit && (
+        <>
+          {runError && <span className="text-xs text-bad">{runError}</span>}
+          {access.dialog}
+          <Button size="sm" onClick={() => access.ensure(() => void startRun())} disabled={running}>
+            {running ? <LoaderCircle size={14} className="animate-spin" /> : <Play size={13} className="fill-current text-ok" />}
+            {running ? "Выполняется…" : "Запустить"}
+          </Button>
+        </>
+      )}
+      {historyOpen && (
+        <VersionHistoryDialog
+          projectId={projectId}
+          file={file}
+          language={language ?? "plaintext"}
+          controller={activeController}
+          canEdit={canEdit}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+    </span>
+  );
 
   if (isDoc) {
     return (

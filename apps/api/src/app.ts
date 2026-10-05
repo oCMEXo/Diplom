@@ -17,6 +17,7 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { projectsRoutes } from "./modules/projects/projects.routes.js";
 import { inviteRoutes } from "./modules/projects/invite.routes.js";
 import { filesRoutes } from "./modules/files/files.routes.js";
+import { versionsRoutes } from "./modules/versions/versions.routes.js";
 import { messagesRoutes } from "./modules/messages/messages.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
 import { runsRoutes } from "./modules/runs/runs.routes.js";
@@ -115,6 +116,7 @@ export async function buildApp(options: AppOptions = {}) {
   await app.register(authRoutes, { prefix: "/auth" });
   await app.register(projectsRoutes, { prefix: "/projects" });
   await app.register(filesRoutes, { prefix: "/projects" });
+  await app.register(versionsRoutes, { prefix: "/projects" });
   await app.register(inviteRoutes);
   await app.register(messagesRoutes, { prefix: "/projects" });
   if (runEnabled) {
