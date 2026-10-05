@@ -16,6 +16,7 @@ describe("host server", () => {
   let webRoot: string;
   let api: http.Server;
   let collab: http.Server;
+let terminal: http.Server;
   let host: http.Server;
   let hostPort: number;
   const seen: { url?: string; forwardedFor?: string | string[]; body?: string } = {};
@@ -43,18 +44,23 @@ describe("host server", () => {
     const sockets = new WebSocketServer({ server: collab });
     sockets.on("connection", (socket) => socket.on("message", (data) => socket.send(`echo:${data}`)));
 
+    terminal = http.createServer();
+    new WebSocketServer({ server: terminal }).on("connection", (socket, request) => socket.send(`terminal:${request.url}`));
+
     const apiPort = await listen(api);
     const collabPort = await listen(collab);
+    const terminalPort = await listen(terminal);
     host = createHostServer({
       webRoot,
       apiTarget: `http://127.0.0.1:${apiPort}`,
       collabTarget: `http://127.0.0.1:${collabPort}`,
+      terminalTarget: `http://127.0.0.1:${terminalPort}`,
     });
     hostPort = await listen(host);
   });
 
   afterAll(async () => {
-    await Promise.all([close(host), close(api), close(collab)]);
+    await Promise.all([close(host), close(api), close(collab), close(terminal)]);
     fs.rmSync(webRoot, { recursive: true, force: true });
   });
 
@@ -106,6 +112,18 @@ describe("host server", () => {
       socket.on("error", reject);
     });
     expect(reply).toBe("echo:hello");
+  });
+
+  it("carries terminals to the runner under /terminal, with the ticket in the query", async () => {
+    const reply = await new Promise<string>((resolve, reject) => {
+      const socket = new WebSocket(`ws://127.0.0.1:${hostPort}/terminal?ticket=abc&cols=80`);
+      socket.on("message", (data) => {
+        resolve(String(data));
+        socket.close();
+      });
+      socket.on("error", reject);
+    });
+    expect(reply).toBe("terminal:/?ticket=abc&cols=80");
   });
 
   it("refuses WebSocket connections to anything else", async () => {

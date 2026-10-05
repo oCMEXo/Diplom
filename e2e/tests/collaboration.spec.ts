@@ -428,3 +428,30 @@ test("switching the repository branch changes the files for everyone in the proj
   await expect(friendPage.getByRole("link", { name: "test.md" })).toHaveCount(0);
   await expect(friendPage.getByRole("link", { name: "index.html" })).toBeVisible();
 });
+
+test("the terminal runs the project's files in a sandbox, like Git Bash", async ({ browser, request }) => {
+  test.skip(process.env.E2E_RUNNER !== "1", "needs the runner service and Docker");
+
+  const owner = await register(request, "Аня");
+  const project = await createProject(request, owner, "Песочница");
+  const file = await createFile(request, owner, project.id, "main.js");
+  const page = await openAs(browser, owner, `/projects/${project.id}/files/${file.id}`);
+  await typeInEditor(page, "console.log('ответ', 6 * 7)");
+  // The sync server saves edits within three seconds; the terminal copies the saved files.
+  await page.waitForTimeout(3500);
+
+  await page.getByRole("button", { name: "Терминал" }).click();
+  const terminal = page.getByRole("region", { name: "Терминал" });
+  const screen = terminal.locator(".xterm-rows");
+  await expect(screen).toContainText("Аня@collab", { timeout: 60_000 });
+
+  await terminal.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.type("ls && node main.js");
+  await page.keyboard.press("Enter");
+  await expect(screen).toContainText("ответ 42", { timeout: 20_000 });
+  await expect(screen).toContainText("main.js");
+
+  // Ctrl+` closes it, and the session ends with the panel.
+  await page.keyboard.press("Control+Backquote");
+  await expect(terminal).toBeHidden();
+});

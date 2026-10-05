@@ -127,7 +127,7 @@ jobs:
         run: docker pull node:22-alpine && docker pull python:3.12-alpine
 
       - name: Start the code runner
-        run: nohup pnpm --filter @collab/runner exec tsx src/server.ts > runner.log 2>&1 &
+        run: TERMINAL_PORT=3103 nohup pnpm --filter @collab/runner exec tsx src/server.ts > runner.log 2>&1 &
 
       - name: Run end-to-end tests
         run: pnpm --filter @collab/e2e e2e

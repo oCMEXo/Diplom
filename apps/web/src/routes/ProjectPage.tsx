@@ -6,6 +6,8 @@ import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
 import { RealtimeProvider, useRealtimeEvents } from "../lib/RealtimeContext";
 import { BranchDialog, refreshProjectFiles } from "../components/BranchDialog";
+import { TerminalPanel } from "../components/TerminalPanel";
+import { useRunMode } from "../lib/features";
 import { CreateFileDialog } from "../components/CreateFileDialog";
 import { CreateProjectDialog } from "../components/CreateProjectDialog";
 import { DeleteFileDialog } from "../components/DeleteFileDialog";
@@ -61,6 +63,9 @@ export function ProjectPage() {
   const [renamingFile, setRenamingFile] = useState<FileRecord | null>(null);
   const [searching, setSearching] = useState(false);
   const [branching, setBranching] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const runMode = useRunMode();
+  const terminalAvailable = !!runMode && runMode !== "off";
 
   // Ctrl+P (or Ctrl+K) opens "go to file" instead of the browser's print dialog.
   useEffect(() => {
@@ -68,6 +73,11 @@ export function ProjectPage() {
       if ((event.ctrlKey || event.metaKey) && !event.altKey && ["p", "k"].includes(event.key.toLowerCase())) {
         event.preventDefault();
         setSearching(true);
+      }
+      // Ctrl+` opens and closes the terminal, as in VS Code.
+      if (event.ctrlKey && event.code === "Backquote") {
+        event.preventDefault();
+        setTerminalOpen((open) => !open);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -157,6 +167,8 @@ export function ProjectPage() {
             onSearch={() => setSearching(true)}
             onNavigate={() => setNavOpen(false)}
             onBranches={() => setBranching(true)}
+            terminalOpen={terminalOpen}
+            onToggleTerminal={terminalAvailable ? () => setTerminalOpen((open) => !open) : undefined}
           />
         </div>
 
@@ -173,6 +185,9 @@ export function ProjectPage() {
               } satisfies ProjectOutletContext
             }
           />
+          {terminalOpen && terminalAvailable && canEdit && (
+            <TerminalPanel projectId={project.id} onClose={() => setTerminalOpen(false)} />
+          )}
         </main>
 
         {panelOpen && (

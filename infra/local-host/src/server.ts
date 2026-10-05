@@ -9,11 +9,14 @@ export interface HostOptions {
   apiTarget: string;
   /** Where `/collab` goes, e.g. http://127.0.0.1:3234 (the `/collab` prefix is removed). */
   collabTarget: string;
+  /** Where `/terminal` goes (the runner's terminal server); without it there is no terminal. */
+  terminalTarget?: string;
 }
 
 const PREFIXES = [
   { prefix: "/api", key: "apiTarget" },
   { prefix: "/collab", key: "collabTarget" },
+  { prefix: "/terminal", key: "terminalTarget" },
 ] as const;
 
 /** `/api`, `/api/x` and `/api?x` belong to the API; `/apiary` does not. */
@@ -23,7 +26,8 @@ function match(url: string, prefix: string) {
 
 function route(url: string, options: HostOptions) {
   for (const { prefix, key } of PREFIXES) {
-    if (match(url, prefix)) return { target: options[key], rest: url.slice(prefix.length) || "/" };
+    const target = options[key];
+    if (target && match(url, prefix)) return { target, rest: url.slice(prefix.length) || "/" };
   }
   return null;
 }
@@ -31,8 +35,8 @@ function route(url: string, options: HostOptions) {
 const NO_CACHE = new Set(["/", "/index.html", "/sw.js", "/manifest.webmanifest", "/registerSW.js"]);
 
 /**
- * One address for everything: the built web app, the REST API under `/api` and the sync server under
- * `/collab` (WebSockets included). That is what lets a single public tunnel carry the whole site.
+ * One address for everything: the built web app, the REST API under `/api`, the sync server under
+ * `/collab` and the terminals under `/terminal` (WebSockets included). That is what lets a single public tunnel carry the whole site.
  */
 export function createHostServer(options: HostOptions) {
   const proxy = httpProxy.createProxyServer({ xfwd: true, ws: true });

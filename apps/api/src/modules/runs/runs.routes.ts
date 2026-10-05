@@ -1,12 +1,14 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { errorResponseSchema, runAcceptedSchema, runRequestSchema } from "@collab/shared";
+import { requireRunCode } from "../../lib/run-access.js";
 import { requestRun } from "./runs.service.js";
 
 const params = z.object({ projectId: z.string().uuid(), fileId: z.string().uuid() });
 
-export const runsRoutes: FastifyPluginAsyncZod = async (app) => {
+export const runsRoutes: FastifyPluginAsyncZod<{ accessCode?: string }> = async (app, options) => {
   app.addHook("preHandler", app.authenticate);
+  app.addHook("preHandler", requireRunCode(options.accessCode));
 
   app.post(
     "/:projectId/files/:fileId/run",

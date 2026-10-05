@@ -8,6 +8,7 @@
  *   pnpm host:test                 # build, start everything, open a public tunnel
  *   pnpm host:test -- --no-tunnel  # same, but only on http://127.0.0.1:8787
  *   pnpm host:test -- --skip-build # reuse the last web build
+ *   pnpm host:test -- --no-run     # no code running and no terminal at all
  *
  * Running visitors' code is switched off here on purpose: the public address must not become a way
  * to run other people's programs on this computer.
@@ -37,6 +38,10 @@ const option = (name: string) => flags.find((flag) => flag.startsWith(`${name}=`
 const PORT = Number(option("--port") ?? process.env.HOST_PORT ?? 8787);
 const API_PORT = PORT + 1000;
 const COLLAB_PORT = PORT + 2000;
+const TERMINAL_PORT = PORT + 3000;
+const REDIS_PORT = Number(process.env.HOST_REDIS_PORT ?? 6380);
+// Database 2: the development runner uses 0 and the end-to-end tests 1, so nobody takes another's jobs.
+const REDIS_URL = `redis://localhost:${REDIS_PORT}/2`;
 const DB_NAME = "collab_host";
 const DB_CONTAINER = process.env.HOST_DB_CONTAINER ?? "collab-dev-postgres-1";
 const DB_PORT = Number(process.env.HOST_DB_PORT ?? 5433);
@@ -72,12 +77,35 @@ process.on("SIGINT", () => stop(0));
 process.on("SIGTERM", () => stop(0));
 process.on("exit", () => stop(null));
 
+/** Easy to read out and type: no 0/O or 1/I, grouped by four. */
+function newRunCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const chars = [...randomBytes(12)].map((byte) => alphabet[byte % alphabet.length]);
+  return [0, 4, 8].map((start) => chars.slice(start, start + 4).join("")).join("-");
+}
+
+/** Kept between restarts, so sign-ins and the access code survive them. */
 function secrets() {
   const file = path.join(stateDir, "secrets.json");
-  if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8")) as { access: string; refresh: string };
-  const created = { access: randomBytes(48).toString("base64url"), refresh: randomBytes(48).toString("base64url") };
-  writeFileSync(file, JSON.stringify(created, null, 2));
-  return created;
+  const stored = existsSync(file)
+    ? (JSON.parse(readFileSync(file, "utf8")) as { access?: string; refresh?: string; runCode?: string })
+    : {};
+  const filled = {
+    access: stored.access ?? randomBytes(48).toString("base64url"),
+    refresh: stored.refresh ?? randomBytes(48).toString("base64url"),
+    runCode: stored.runCode ?? newRunCode(),
+  };
+  if (JSON.stringify(filled) !== JSON.stringify(stored)) writeFileSync(file, JSON.stringify(filled, null, 2));
+  return filled;
+}
+
+function dockerWorks() {
+  try {
+    execFileSync("docker", ["info", "--format", "{{.ServerVersion}}"], { stdio: "ignore", timeout: 15_000 });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function portOpen(port: number) {
@@ -200,7 +228,14 @@ async function main() {
 
   say("• Проверяем базу данных…");
   await ensureDatabase();
-  const { access, refresh } = secrets();
+  const { access, refresh, runCode } = secrets();
+
+  let runReason: string | null = null;
+  if (has("--no-run")) runReason = "выключен флагом --no-run";
+  else if (!(await portOpen(REDIS_PORT))) runReason = `Redis не отвечает на порту ${REDIS_PORT}`;
+  else if (!dockerWorks()) runReason = "Docker не отвечает";
+  const runOn = runReason === null;
+  if (!runOn) say(`• Запуск кода и терминал выключены: ${runReason}.`);
   const common = { DATABASE_URL, JWT_ACCESS_SECRET: access, NODE_ENV: "production" };
 
   say("• Применяем миграции…");
@@ -213,7 +248,7 @@ async function main() {
     await runToEnd(
       "pnpm",
       ["--filter", "@collab/web", "exec", "vite", "build", "--outDir", `"${webDir}"`, "--emptyOutDir"],
-      { VITE_API_URL: "/api", VITE_COLLAB_URL: "/collab", VITE_RUN_ENABLED: "false" },
+      { VITE_API_URL: "/api", VITE_COLLAB_URL: "/collab", VITE_TERMINAL_URL: "/terminal" },
       "web-build",
     ).catch((error) => fail(error.message));
   }
@@ -225,7 +260,9 @@ async function main() {
     PORT: String(API_PORT),
     HOST: "127.0.0.1",
     CORS_ORIGIN: `http://127.0.0.1:${PORT}`,
-    RUN_ENABLED: "false",
+    RUN_ENABLED: String(runOn),
+    RUN_ACCESS_CODE: runCode,
+    REDIS_URL,
     TRUST_PROXY: "true",
     RATE_LIMIT_PER_MINUTE: "600",
     RATE_LIMIT_AUTH_PER_MINUTE: "20",
@@ -235,6 +272,14 @@ async function main() {
     PORT: String(COLLAB_PORT),
     HOST: "127.0.0.1",
   });
+  if (runOn) {
+    say("• Запускаем песочницу для кода и терминала…");
+    startService("runner", ["--filter", "@collab/runner", "exec", "tsx", "src/server.ts"], {
+      REDIS_URL,
+      TERMINAL_PORT: String(TERMINAL_PORT),
+      TERMINAL_HOST: "127.0.0.1",
+    });
+  }
   await waitFor(`http://127.0.0.1:${API_PORT}/health`, "API");
   await waitFor(`http://127.0.0.1:${COLLAB_PORT}/`, "Сервер совместной работы").catch(() => undefined);
 
@@ -242,6 +287,7 @@ async function main() {
     webRoot: webDir,
     apiTarget: `http://127.0.0.1:${API_PORT}`,
     collabTarget: `http://127.0.0.1:${COLLAB_PORT}`,
+    terminalTarget: runOn ? `http://127.0.0.1:${TERMINAL_PORT}` : undefined,
   });
   await new Promise<void>((resolve) => server.listen(PORT, "127.0.0.1", resolve));
 
@@ -258,7 +304,13 @@ async function main() {
 
   say("\n" + "─".repeat(64));
   say(publicUrl ? `  Публичный адрес:  ${publicUrl}` : `  Адрес:  ${local}`);
-  say("  Запуск кода на этом сайте выключен (это защита вашего компьютера).");
+  if (runOn) {
+    say(`  Код доступа к запуску кода и терминалу:  ${runCode}`);
+    say("  Без него посетители могут редактировать, но не запускать программы.");
+    say("  Код хранится в infra/local-host/.state/secrets.json; удалите строку runCode, чтобы сменить его.");
+  } else {
+    say("  Запуск кода и терминал на этом сайте выключены.");
+  }
   say("  Данные хранятся в базе collab_host, отдельно от вашей разработки.");
   say("  Остановить: Ctrl+C. Пока компьютер спит или окно закрыто, сайт недоступен.");
   say("─".repeat(64) + "\n");

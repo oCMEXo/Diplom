@@ -1,3 +1,5 @@
+import { RUN_CODE_HEADER } from "@collab/shared";
+import { currentRunCode } from "./run-code";
 import { tokenStore } from "./tokenStore";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -41,6 +43,9 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
   if (auth) {
     headers.set("Authorization", `Bearer ${auth.tokens.accessToken}`);
   }
+  // Only the site owner's access code lets code run on a public host; the server ignores it elsewhere.
+  const code = currentRunCode();
+  if (code) headers.set(RUN_CODE_HEADER, code);
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
 

@@ -8,12 +8,19 @@ import { enqueueRun } from "../../lib/queue.js";
 import { yjsStateToText } from "../../lib/yjs-text.js";
 
 /**
- * The rest of the project's text files, so the program can import its neighbours. Shallow files come
- * first when the limits cut the list; installed dependencies are never sent.
+ * The project's text files on a branch (except one, the file being run), so a program can import its
+ * neighbours and a terminal shows the whole project. Shallow files come first when the limits cut the
+ * list; installed dependencies are never sent.
  */
-async function siblingFiles(projectId: string, entryId: string, branch: string) {
+export async function projectTextFiles(projectId: string, branch: string, exceptId?: string) {
   const rows = await prisma.file.findMany({
-    where: { projectId, branch, id: { not: entryId }, type: { not: "board" }, deletedAt: null },
+    where: {
+      projectId,
+      branch,
+      type: { not: "board" },
+      deletedAt: null,
+      ...(exceptId ? { id: { not: exceptId } } : {}),
+    },
     select: { path: true, yjsState: true },
   });
   const candidates = rows
@@ -67,7 +74,7 @@ export async function requestRun(
     language,
     code,
     entry: file.path,
-    files: await siblingFiles(projectId, fileId, file.branch),
+    files: await projectTextFiles(projectId, file.branch, fileId),
     startedBy: { id: user.id, name: user.name },
   });
 

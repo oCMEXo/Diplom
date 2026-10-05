@@ -1,6 +1,10 @@
 # Caddy obtains and renews HTTPS certificates automatically; WebSocket upgrades
 # are proxied without extra configuration.
 {$API_DOMAIN} {
+	# Terminals live in the runner (the only service with Docker access).
+	handle_path /terminal* {
+		reverse_proxy runner:3003
+	}
 	reverse_proxy api:3001
 }
 

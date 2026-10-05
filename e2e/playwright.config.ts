@@ -3,6 +3,8 @@ import { defineConfig } from "@playwright/test";
 const API_PORT = 3101;
 const COLLAB_PORT = 1334;
 const WEB_PORT = 5199;
+// The runner's terminal server: start the runner with TERMINAL_PORT=3103 for the terminal scenario.
+const TERMINAL_PORT = 3103;
 
 const database =
   process.env.DATABASE_URL ?? "postgresql://collab:collab@localhost:5433/collab_test?schema=public";
@@ -56,6 +58,7 @@ export default defineConfig({
       env: {
         VITE_API_URL: `http://localhost:${API_PORT}`,
         VITE_COLLAB_URL: `ws://localhost:${COLLAB_PORT}`,
+        VITE_TERMINAL_URL: `http://localhost:${TERMINAL_PORT}`,
       },
     },
   ],

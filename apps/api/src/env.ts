@@ -24,6 +24,8 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((value) => value === "true"),
+  /** With a code set, running code and the terminal work only for people who entered it. */
+  RUN_ACCESS_CODE: z.preprocess((value) => (value === "" ? undefined : value), z.string().min(8).optional()),
 });
 
 export const env = envSchema.parse(process.env);

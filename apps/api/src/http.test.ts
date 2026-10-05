@@ -163,4 +163,48 @@ describe("HTTP behaviour a person sees", () => {
     expect(response.statusCode).toBe(403);
     expect(response.json().message).toBe("Запуск кода на этом сервере выключен");
   });
+
+  it("tells the app whether code runs here, and for whom", async () => {
+    for (const [options, run] of [
+      [{ runEnabled: true, runAccessCode: undefined }, "open"],
+      [{ runEnabled: true, runAccessCode: "secret-code-1" }, "code"],
+      [{ runEnabled: false, runAccessCode: undefined }, "off"],
+    ] as const) {
+      const app = await buildApp(options);
+      try {
+        const response = await app.inject({ method: "GET", url: "/features" });
+        expect(response.json()).toEqual({ run });
+      } finally {
+        await app.close();
+      }
+    }
+  });
+
+  it("runs code and opens terminals only for people who give the access code", async () => {
+    const owner = await registerOwner("Аня");
+    const app = await buildApp({ runEnabled: true, runAccessCode: "secret-code-1" });
+    const auth = { authorization: `Bearer ${owner.tokens.accessToken}` };
+    try {
+      const check = (code: string) => app.inject({ method: "POST", url: "/run-access", payload: { code } });
+      expect((await check("guess")).statusCode).toBe(403);
+      expect((await check(" secret-code-1 ")).statusCode).toBe(204);
+
+      const project = randomUUID();
+      for (const [url, payload] of [
+        [`/projects/${project}/files/${randomUUID()}/run`, { code: "print(1)" }],
+        [`/projects/${project}/terminal`, undefined],
+      ] as const) {
+        const without = await app.inject({ method: "POST", url, headers: auth, payload });
+        expect(without.statusCode).toBe(403);
+        expect(without.json().message).toMatch(/кодом доступа/);
+        const wrong = await app.inject({ method: "POST", url, headers: { ...auth, "x-run-code": "nope" }, payload });
+        expect(wrong.statusCode).toBe(403);
+        // With the code the request gets through to the project check (this project does not exist).
+        const right = await app.inject({ method: "POST", url, headers: { ...auth, "x-run-code": "secret-code-1" }, payload });
+        expect(right.statusCode).toBe(404);
+      }
+    } finally {
+      await app.close();
+    }
+  });
 });

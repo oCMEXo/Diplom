@@ -7,12 +7,12 @@ import { CollabEditor, type EditorController } from "../components/CollabEditor"
 import { FileTabs } from "../components/FileTabs";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { RunPanel } from "../components/RunPanel";
+import { useRunAccess } from "../components/RunAccess";
 import { FILE_KINDS } from "../components/layout/ProjectNav";
 import { ProjectHeader, type SyncStatus } from "../components/layout/ProjectHeader";
 import { Button } from "../components/ui/Button";
 import { api, ApiError } from "../lib/api";
 import { cn } from "../lib/cn";
-import { RUN_ENABLED } from "../lib/features";
 import { rememberFile } from "../lib/last-file";
 import { useRun } from "../lib/RealtimeContext";
 import type { ProjectOutletContext } from "./ProjectPage";
@@ -27,6 +27,7 @@ export function FileEditorPage() {
   const [activeController, setActiveController] = useState<EditorController | null>(null);
   const [status, setStatus] = useState<SyncStatus>("connecting");
   const run = useRun(fileId ?? "");
+  const access = useRunAccess();
   const runRef = useRef(run);
   runRef.current = run;
   const [runError, setRunError] = useState<string | null>(null);
@@ -94,7 +95,7 @@ export function FileEditorPage() {
 
   const isDoc = file.type === "doc";
   const language = isDoc ? "markdown" : (file.language ?? inferLanguage(file.path));
-  const runnable = RUN_ENABLED && !isDoc && toRunnableLanguage(language) !== null;
+  const runnable = !!access.mode && access.mode !== "off" && !isDoc && toRunnableLanguage(language) !== null;
   const running = run?.status === "running";
 
   async function startRun() {
@@ -105,6 +106,7 @@ export function FileEditorPage() {
         code: controller.current.getCode(),
       });
     } catch (err) {
+      if (access.refused(err, () => void startRun())) return;
       setRunError(err instanceof ApiError ? err.message : "Не удалось запустить");
     }
   }
@@ -127,7 +129,8 @@ export function FileEditorPage() {
     runnable && canEdit ? (
       <span className="flex items-center gap-2">
         {runError && <span className="text-xs text-bad">{runError}</span>}
-        <Button size="sm" onClick={startRun} disabled={running}>
+        {access.dialog}
+        <Button size="sm" onClick={() => access.ensure(() => void startRun())} disabled={running}>
           {running ? <LoaderCircle size={14} className="animate-spin" /> : <Play size={13} className="fill-current text-ok" />}
           {running ? "Выполняется…" : "Запустить"}
         </Button>

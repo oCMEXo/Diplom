@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { GitBranch, Plus, Search, UserPlus } from "lucide-react";
+import { GitBranch, Plus, Search, SquareTerminal, UserPlus } from "lucide-react";
 import type { FileRecord, FileType, Project, ProjectWithMembers } from "@collab/shared";
 import { api } from "../../lib/api";
 import { gradientFor, initials } from "../../lib/colors";
@@ -84,6 +84,8 @@ export function ProjectNav({
   onSearch,
   onNavigate,
   onBranches,
+  terminalOpen,
+  onToggleTerminal,
 }: {
   project: ProjectWithMembers;
   files: FileRecord[];
@@ -98,6 +100,9 @@ export function ProjectNav({
   onSearch: () => void;
   onNavigate: () => void;
   onBranches: () => void;
+  /** Undefined when this server has no terminal. */
+  terminalOpen?: boolean;
+  onToggleTerminal?: () => void;
 }) {
   const online = useOnlineUsers();
   const status = useRealtimeStatus();
@@ -176,6 +181,20 @@ export function ProjectNav({
               </Button>
               <GithubMenu onImport={onImport} onPush={onPush} canPush={files.length > 0} />
             </div>
+          )}
+          {canEdit && onToggleTerminal && (
+            <button
+              onClick={onToggleTerminal}
+              aria-pressed={terminalOpen}
+              className={cn(
+                "flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-xs transition",
+                terminalOpen ? "bg-raised text-fg" : "text-muted hover:bg-raised hover:text-fg",
+              )}
+            >
+              <SquareTerminal size={14} className="text-ok" />
+              <span className="flex-1 text-left">Терминал</span>
+              <kbd className="rounded border border-line px-1 text-[10px] text-faint">Ctrl `</kbd>
+            </button>
           )}
           <p className="flex items-center gap-2 px-1 text-xs text-muted">
             <span
