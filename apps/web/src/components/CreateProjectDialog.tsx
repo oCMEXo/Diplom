@@ -65,7 +65,11 @@ export function CreateProjectDialog({ onClose, onCreated }: { onClose: () => voi
           </ErrorNote>
         )}
         {source === "empty" ? (
+          // Different keys make React create a new field on switching, so autoFocus moves the cursor there.
           <Field
+            key="name"
+            autoFocus
+            data-autofocus
             label="Название"
             placeholder="Например, Курсовая по алгоритмам"
             maxLength={200}
@@ -74,6 +78,9 @@ export function CreateProjectDialog({ onClose, onCreated }: { onClose: () => voi
           />
         ) : (
           <Field
+            key="url"
+            autoFocus
+            data-autofocus
             label="Ссылка на репозиторий"
             placeholder="https://github.com/owner/repo"
             value={url}

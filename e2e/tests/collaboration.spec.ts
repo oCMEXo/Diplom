@@ -165,6 +165,8 @@ test("a file can be created from the sidebar and the theme choice is remembered"
   const page = await openAs(browser, owner, `/projects/${project.id}`);
 
   await page.getByRole("button", { name: "Создать файл" }).click();
+  // The name field takes the focus, so one can start typing straight away.
+  await expect(page.getByLabel("Имя файла")).toBeFocused();
   await page.getByRole("radio", { name: "Документ" }).click();
   await page.getByLabel("Имя файла").fill("заметки.md");
   await page.getByRole("button", { name: "Создать", exact: true }).click();
@@ -190,7 +192,9 @@ test("a public GitHub repository can be imported into a new project", async ({ b
   const page = await openAs(browser, owner, "/");
 
   await page.getByRole("button", { name: "Новый проект" }).first().click();
+  await expect(page.getByLabel("Название")).toBeFocused();
   await page.getByRole("radio", { name: "Из GitHub" }).click();
+  await expect(page.getByLabel("Ссылка на репозиторий")).toBeFocused();
   await page.getByLabel("Ссылка на репозиторий").fill("https://github.com/octocat/Hello-World");
   await page.getByRole("button", { name: "Создать и импортировать" }).click();
 
