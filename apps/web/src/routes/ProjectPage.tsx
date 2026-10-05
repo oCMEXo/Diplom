@@ -42,8 +42,10 @@ function BranchWatcher({ projectId }: { projectId: string }) {
   const location = useLocation();
   useRealtimeEvents((event) => {
     if (event.type !== "project.branch") return;
-    refreshProjectFiles(queryClient, projectId);
-    if (location.pathname.includes("/files/")) navigate(`/projects/${projectId}`);
+    const onFile = location.pathname.includes("/files/");
+    void refreshProjectFiles(queryClient, projectId).then(() => {
+      if (onFile) navigate(`/projects/${projectId}`);
+    });
   });
   return null;
 }

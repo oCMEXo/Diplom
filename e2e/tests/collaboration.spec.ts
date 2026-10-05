@@ -466,6 +466,11 @@ test("switching the repository branch changes the files for everyone in the proj
 
   // The other person did nothing: their sidebar follows the switch.
   await expect(friendPage.getByRole("link", { name: "test.md" })).toBeVisible();
+  // Both land on a file of the new branch, not on the old branch's README that no longer exists here.
+  for (const page of [ownerPage, friendPage]) {
+    await expect(page.getByRole("heading", { name: "README.md" })).toBeVisible();
+    await expect(page.getByText("Файл не найден")).toHaveCount(0);
+  }
   await expect(friendPage.getByRole("button", { name: "Ветка репозитория" })).toHaveText("test-branch");
 
   await ownerPage.getByRole("button", { name: "Ветка репозитория" }).click();
