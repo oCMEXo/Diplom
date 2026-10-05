@@ -13,7 +13,7 @@
 | [06-conclusion.md](06-conclusion.md) | Заключение |
 
 Связанные материалы: [ADR](../adr), [WebSocket-протокол](../websocket-protocol.md),
-[деплой](../deploy-aws.md), [результаты стенда](../../bench/results/REPORT.md),
+[развёртывание в AWS](../deploy-aws.md), [результаты стенда](../../bench/results/REPORT.md),
 Swagger — `/docs` у запущенного API.
 
 ## Что осталось сделать перед сдачей
