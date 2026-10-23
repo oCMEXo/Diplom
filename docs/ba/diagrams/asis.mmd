@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph I["Initiator"]
+    direction TB
+    s((●)) --> a1[Start a call in a messenger]
+    a1 --> a2[Share the screen]
+    a2 --> d1{Does someone else<br>need to edit?}
+    d1 -- no --> a3[Edit while others dictate]
+    a3 --> d1
+    d1 -- yes --> a4[Push code to GitHub<br>or send it as a file]
+    a9[Merge the received changes<br>and resolve conflicts by hand] --> e((◉))
+  end
+  subgraph P["Other participants"]
+    direction TB
+    b1[Get access: invitation,<br>account, editor installation] --> b2[Pull the code and install<br>dependencies]
+    b2 --> b3[Edit a local copy<br>and run it locally]
+    b3 --> b4[Send changes back<br>as a file or commit]
+  end
+  subgraph T["Separate tools"]
+    direction TB
+    c1[Task in a separate document]
+    c2[Diagram on a separate whiteboard]
+  end
+  a4 --> b1
+  b4 --> a9
+  a2 -.-> c1
+  a2 -.-> c2
+  classDef loss fill:#fde2e1,stroke:#c0392b,color:#000
+  class b1,b2,a9,a3 loss

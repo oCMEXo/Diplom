@@ -1,0 +1,26 @@
+flowchart TB
+  subgraph I["Initiator"]
+    direction TB
+    s((●)) --> a1[Create a project once<br>or import it from GitHub]
+    a1 --> a2[Copy one invitation link<br>and send it]
+  end
+  subgraph P["Participants (incl. guests)"]
+    direction TB
+    b1[Open the link in a browser;<br>guest enters only a name] --> b2[Edit the same files together:<br>code, Markdown, whiteboard]
+    b2 --> b3[Discuss in the project chat]
+    b3 --> b4[Run the code: same output<br>for everyone]
+    b4 --> d1{Work finished?}
+    d1 -- no --> b2
+    d1 -- yes --> b5[Push changes to GitHub]
+    b5 --> e((◉))
+  end
+  subgraph S["Platform"]
+    direction TB
+    c1[Merge all edits automatically,<br>including offline ones]
+    c2[Show cursors and presence]
+  end
+  a2 --> b1
+  b2 -.-> c1
+  b2 -.-> c2
+  classDef gain fill:#dff5e3,stroke:#1e8449,color:#000
+  class b1,b2,b4,c1 gain

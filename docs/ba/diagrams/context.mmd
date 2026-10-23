@@ -1,0 +1,12 @@
+flowchart LR
+  owner([Owner]) -- creates projects,<br>invites, manages roles --> sys
+  editor([Editor]) -- edits files, chats,<br>runs code --> sys
+  viewer([Viewer]) -- reads files<br>and chat --> sys
+  guest([Guest]) -- joins by link<br>with a name --> sys
+  sys[["Collaborative code editing platform<br>(web client, REST API, sync server,<br>sandbox runner, database)"]]
+  sys -- import, push commits,<br>list branches --> gh[(GitHub)]
+  sys -- runs on --> cloud[(Cloud hosting)]
+  sys -- runs user code in --> docker[(Docker sandbox)]
+  classDef ext fill:#eef2ff,stroke:#4f46e5,color:#000
+  class gh,cloud,docker ext
+  style sys fill:#fff7e0,stroke:#b7791f,color:#000

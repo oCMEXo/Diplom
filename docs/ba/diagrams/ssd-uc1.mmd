@@ -1,0 +1,19 @@
+sequenceDiagram
+  actor G as Guest
+  participant S as :Platform
+  actor O as Other participants
+  G->>S: openInvitation(code)
+  alt link invalid or regenerated
+    S-->>G: "invitation is invalid or expired"
+  else link valid
+    S-->>G: project name, inviter, role
+    G->>S: joinAsGuest(displayName)
+    S-->>G: session, membership(role), start file
+    S-->>O: presence(guest online)
+    loop while editing
+      G->>S: edit(update)
+      S-->>O: update, cursor(guest name)
+      O->>S: edit(update)
+      S-->>G: update, cursor(name)
+    end
+  end

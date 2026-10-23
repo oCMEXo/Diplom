@@ -1,0 +1,31 @@
+flowchart LR
+  guest([Guest])
+  viewer([Viewer])
+  editor([Editor])
+  owner([Owner])
+  subgraph SYS["Collaborative code editing platform"]
+    direction TB
+    uc1([UC-1 Join by invitation<br>and co-edit a file])
+    ucr([Read files])
+    ucc([Chat with the team])
+    uc2([UC-2 Run code and<br>share the result])
+    ucw([Draw on the whiteboard])
+    ucv([Restore a version<br>or a deleted file])
+    ucp([Create a project])
+    uci([Invite and manage roles])
+    ucg([Import or push to GitHub])
+  end
+  gh[(GitHub)]
+  guest --- uc1
+  viewer --- ucr
+  viewer --- ucc
+  editor --- uc1
+  editor --- uc2
+  editor --- ucw
+  editor --- ucv
+  owner --- ucp
+  owner --- uci
+  owner --- ucg
+  ucg --- gh
+  editor -. "is a" .-> viewer
+  owner -. "is a" .-> editor
